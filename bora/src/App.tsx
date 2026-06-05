@@ -6,6 +6,10 @@ import { AuthCallbackPage } from "./pages/AuthCallback";
 import { HomePage } from "./pages/Home";
 import { OrgPage } from "./pages/Org";
 import { ChatPage } from "./pages/Chat";
+// Track A — Meetings & Voice
+import { MeetingsPage } from "./pages/Meetings";
+import { RecapPage } from "./pages/Recap";
+import { BotCamPage } from "./pages/BotCam";
 
 /** Gate that requires a signed-in user; otherwise bounces to /login. */
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -21,6 +25,8 @@ export function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
+        {/* Bot camera page — PUBLIC (Recall's headless browser loads it; no login). */}
+        <Route path="/bot/:meetingId" element={<BotCamPage />} />
         <Route
           path="/"
           element={
@@ -29,23 +35,13 @@ export function App() {
             </RequireAuth>
           }
         />
-        <Route
-          path="/org/:id"
-          element={
-            <RequireAuth>
-              <OrgPage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/org/:id/chat"
-          element={
-            <RequireAuth>
-              <ChatPage />
-            </RequireAuth>
-          }
-        />
-        {/* Phase 1+ routes (meetings, recap, bot page) mount here. */}
+        {/* Track B — Org / Chat / Knowledge */}
+        <Route path="/org/:id" element={<RequireAuth><OrgPage /></RequireAuth>} />
+        <Route path="/org/:id/chat" element={<RequireAuth><ChatPage /></RequireAuth>} />
+        {/* Track A — Meetings & Voice (org-scoped, matching the Chat pattern) */}
+        <Route path="/org/:id/meetings" element={<RequireAuth><MeetingsPage /></RequireAuth>} />
+        <Route path="/org/:id/meetings/:meetingId" element={<RequireAuth><RecapPage /></RequireAuth>} />
+        {/* /org/:id/meetings/:meetingId/live (live console + Go gate) lands in Phase 3. */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>
