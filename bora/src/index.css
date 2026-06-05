@@ -48,6 +48,10 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .badge-invited { color: var(--muted); }
 .badge-member { color: var(--muted); }
 .badge-removed { color: var(--danger); border-color: var(--danger); }
+.badge-ready { color: #6ddf9c; border-color: #2f6b48; }
+.badge-ingesting, .badge-pending { color: var(--muted); }
+.badge-error { color: var(--danger); border-color: var(--danger); }
+.badge-doc, .badge-github, .badge-website, .badge-plan { color: var(--muted); }
 
 /* ── Chat (Phase 4) ── */
 .chat-layout { display: grid; grid-template-columns: 240px 1fr; gap: 16px; align-items: start; }

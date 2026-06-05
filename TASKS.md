@@ -137,8 +137,14 @@ The **living checklist** for Bora, derived from [`PLAN.md`](PLAN.md) (the full d
       (`/org/:id/chat`, linked from the Org page). *(Agent tools/memory/RAG come next — basic chat first.)*
 - [ ] After each turn → write to **Xtrace** per-user scope (never shared)
 - [ ] `functions/_shared/memory.ts` two-tier helpers (exists) — wire into chat + meetings
-- [ ] Context ingestion: `functions/ingest-source.ts` → RocketRide fetch/parse (`tool_http_request` / GitHub tool / `parse`) → chunk
-- [ ] Ingestion → write chunks to org's Butterbase RAG `shared` collection (store `rag_doc_ids`) + key facts → shared Xtrace; mark source `ready`
+- [~] Context ingestion: `functions/ingest-source.ts` (admin-only) — **text path done + verified**:
+      paste text → ensure `org-{id}` collection → ingest → poll to `ready` → `context_sources` row
+      (`rag_doc_ids` stored). `Context.tsx` (`/org/:id/context`, linked from Org) lists sources +
+      add/remove. **Verified live**: admin add → member sees row (RLS) → chat grounds answer with
+      citation; non-admin add→403; URL path guarded→501. *(RocketRide URL/GitHub fetch is the
+      remaining branch — `ROCKETRIDE_APIKEY` is unset + needs a `.pipe` pipeline; guarded for now.)*
+- [~] Ingestion → write chunks to org RAG collection (store `rag_doc_ids`) + mark source `ready` —
+      **done for text**. Key-facts → shared **Xtrace** still pending (needs `XTRACE_*` keys).
 - [ ] `check.ts` per RocketRide rules
 - [ ] **Verify:** add GitHub URL + website → pending→ready → ask question only answerable from source → cited answer
 - [ ] **Verify:** user A's private fact recalled for A but **never** for user B

@@ -91,6 +91,9 @@ export function OrgPage() {
           <Link to={`/org/${id}/meetings`} className="secondary" style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
             Meetings
           </Link>
+          <Link to={`/org/${id}/context`} className="secondary" style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
+            Knowledge
+          </Link>
           <Link to={`/org/${id}/chat`} className="secondary" style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
             Chat
           </Link>

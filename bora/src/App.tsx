@@ -6,6 +6,7 @@ import { AuthCallbackPage } from "./pages/AuthCallback";
 import { HomePage } from "./pages/Home";
 import { OrgPage } from "./pages/Org";
 import { ChatPage } from "./pages/Chat";
+import { ContextPage } from "./pages/Context";
 // Track A — Meetings & Voice
 import { MeetingsPage } from "./pages/Meetings";
 import { RecapPage } from "./pages/Recap";
@@ -27,17 +28,11 @@ export function App() {
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         {/* Bot camera page — PUBLIC (Recall's headless browser loads it; no login). */}
         <Route path="/bot/:meetingId" element={<BotCamPage />} />
-        <Route
-          path="/"
-          element={
-            <RequireAuth>
-              <HomePage />
-            </RequireAuth>
-          }
-        />
+        <Route path="/" element={<RequireAuth><HomePage /></RequireAuth>} />
         {/* Track B — Org / Chat / Knowledge */}
         <Route path="/org/:id" element={<RequireAuth><OrgPage /></RequireAuth>} />
         <Route path="/org/:id/chat" element={<RequireAuth><ChatPage /></RequireAuth>} />
+        <Route path="/org/:id/context" element={<RequireAuth><ContextPage /></RequireAuth>} />
         {/* Track A — Meetings & Voice (org-scoped, matching the Chat pattern) */}
         <Route path="/org/:id/meetings" element={<RequireAuth><MeetingsPage /></RequireAuth>} />
         <Route path="/org/:id/meetings/:meetingId" element={<RequireAuth><RecapPage /></RequireAuth>} />
