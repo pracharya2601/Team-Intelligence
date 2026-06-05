@@ -60,6 +60,29 @@ export default async function handler(req: Request, ctx: any): Promise<Response>
       return json({ error: { message: "Not a member of this organization" } }, 403);
     }
 
+    // search_context — retrieve relevant org knowledge from the org's RAG collection.
+    // RAG is best-effort: it must NEVER block a chat turn. The collection is per-org and private;
+    // we query it with the service key only after the membership check above.
+    let context = "";
+    try {
+      const coll = `org-${String(org_id).replace(/[^a-z0-9]/gi, "").toLowerCase()}`;
+      const head = await fetch(`${API}/rag/collections/${coll}`, { headers: { Authorization: `Bearer ${KEY}` } });
+      if (head.ok) {
+        const q = await svc(`/rag/collections/${coll}/query`, {
+          method: "POST",
+          body: JSON.stringify({ query: content, top_k: 5, threshold: 0.3 }),
+        });
+        const chunks: any[] = q?.chunks ?? [];
+        if (chunks.length) {
+          context =
+            "Relevant team knowledge (cite the [n] you used):\n" +
+            chunks.map((c, i) => `[${i + 1}] ${c.content}`).join("\n");
+        }
+      }
+    } catch {
+      /* RAG unavailable / empty collection — answer without it */
+    }
+
     // Resolve the thread — existing (must be the caller's) or new.
     let thread: any;
     if (body.thread_id) {
@@ -89,11 +112,14 @@ export default async function handler(req: Request, ctx: any): Promise<Response>
       "You are Bora, a helpful team assistant inside a private 1:1 chat with one user.",
       "This conversation is private to this user. Never reveal, quote, or reference any other",
       "user's private chat, and never claim to have access to other people's private messages.",
-      "You may use the organization's shared knowledge and meeting context. Be concise and direct.",
+      "You may use the organization's shared knowledge and meeting context. When team knowledge is",
+      "provided below, ground your answer in it and cite the [n] sources you used; if it doesn't",
+      "cover the question, say so rather than guessing. Be concise and direct.",
     ].join(" ");
 
     const messages = [
       { role: "system", content: system },
+      ...(context ? [{ role: "system", content: context }] : []),
       ...history.map((m) => ({ role: m.role, content: m.content })),
     ];
 
