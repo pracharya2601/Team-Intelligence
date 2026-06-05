@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { callFn, select } from "../lib/api";
 import { OrgLayout } from "../components/OrgLayout";
+import { SkeletonList } from "../components/Skeleton";
 import type { Meeting, Organization } from "../../shared/types";
 
 /**
@@ -22,6 +23,7 @@ export function MeetingsPage() {
   const { id: orgId = "" } = useParams();
   const [org, setOrg] = useState<Organization | null>(null);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [loading, setLoading] = useState(true);
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -42,6 +44,8 @@ export function MeetingsPage() {
       setMeetings(ms);
     } catch (e: any) {
       setError(e?.message ?? "Failed to load meetings");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -145,7 +149,9 @@ export function MeetingsPage() {
       <section className="card col">
 
         <h3 style={{ margin: 0 }}>Recent meetings</h3>
-        {meetings.length === 0 ? (
+        {loading ? (
+          <SkeletonList rows={3} action={false} />
+        ) : meetings.length === 0 ? (
           <div className="empty">
             <span className="empty-icon">🎥</span>
             <span>No meetings yet</span>

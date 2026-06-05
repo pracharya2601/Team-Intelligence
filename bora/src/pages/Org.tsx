@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { callFn, select } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { OrgLayout } from "../components/OrgLayout";
+import { SkeletonList } from "../components/Skeleton";
 import type { Organization, OrgMember } from "../../shared/types";
 
 /**
@@ -15,6 +16,7 @@ export function OrgPage() {
   const { user } = useAuth();
   const [org, setOrg] = useState<Organization | null>(null);
   const [members, setMembers] = useState<OrgMember[]>([]);
+  const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"member" | "admin">("member");
   const [busy, setBusy] = useState(false);
@@ -37,7 +39,9 @@ export function OrgPage() {
       setOrg(orgs[0] ?? null);
       setMembers(mem.filter((m) => m.status !== "removed"));
     } catch (e: any) {
-      setError(e?.message ?? "Failed to load organization");
+      setError(e?.message ?? "Failed to load project");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -86,18 +90,21 @@ export function OrgPage() {
       orgId={id}
       orgName={org?.name}
       title="Members"
-      subtitle="People with access to this workspace"
+      subtitle="People with access to this project"
     >
       {!isAdmin && org && (
-        <div className="notice info">You're a member of this org. Only admins can invite or change roles.</div>
+        <div className="notice info">You're a member of this project. Only admins can invite or change roles.</div>
       )}
 
       <section className="card col">
         <div className="row" style={{ justifyContent: "space-between" }}>
           <h3 style={{ margin: 0 }}>Members</h3>
-          <span className="muted text-sm">{members.length}</span>
+          {!loading && <span className="muted text-sm">{members.length}</span>}
         </div>
 
+        {loading ? (
+          <SkeletonList rows={3} />
+        ) : (
         <div className="list">
         {members.map((m) => (
           <div key={m.id} className="list-row">
@@ -145,6 +152,7 @@ export function OrgPage() {
           </div>
         ))}
         </div>
+        )}
       </section>
 
       {isAdmin && (

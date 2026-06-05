@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { callFn, select } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { SkeletonGrid } from "../components/Skeleton";
 import type { Organization } from "../../shared/types";
 
 /**
@@ -21,7 +22,7 @@ export function HomePage() {
     try {
       setOrgs(await select<Organization>("organizations"));
     } catch (e: any) {
-      setError(e?.message ?? "Failed to load organizations");
+      setError(e?.message ?? "Failed to load projects");
     } finally {
       setLoading(false);
     }
@@ -40,7 +41,7 @@ export function HomePage() {
       setName("");
       await loadOrgs();
     } catch (err: any) {
-      setError(err?.message ?? "Failed to create organization");
+      setError(err?.message ?? "Failed to create project");
     } finally {
       setBusy(false);
     }
@@ -63,8 +64,8 @@ export function HomePage() {
       {/* Page header */}
       <div className="page-header">
         <div className="col" style={{ gap: 0 }}>
-          <h1 className="page-title">Your organizations</h1>
-          <p className="page-subtitle">Open a workspace or spin up a new one.</p>
+          <h1 className="page-title">Your projects</h1>
+          <p className="page-subtitle">Open a project or spin up a new one.</p>
         </div>
       </div>
 
@@ -72,21 +73,11 @@ export function HomePage() {
 
       {/* Org grid / loading / empty */}
       {loading ? (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-            gap: 14,
-          }}
-        >
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="skeleton" style={{ height: 104, borderRadius: "var(--r-lg)" }} />
-          ))}
-        </div>
+        <SkeletonGrid count={3} />
       ) : orgs.length === 0 ? (
         <div className="empty">
           <span className="empty-icon">🏢</span>
-          <span>No organizations yet</span>
+          <span>No projects yet</span>
           <span className="text-sm">Create your first one below to get started.</span>
         </div>
       ) : (
@@ -122,13 +113,13 @@ export function HomePage() {
       {/* Create org */}
       <form className="card col" onSubmit={createOrg} style={{ maxWidth: 520 }}>
         <div className="col" style={{ gap: 2 }}>
-          <h3 style={{ margin: 0 }}>Create an organization</h3>
+          <h3 style={{ margin: 0 }}>Create a project</h3>
           <span className="muted text-sm">You'll be its admin. Invite teammates by Gmail next.</span>
         </div>
         <div className="row">
           <input
             className="grow"
-            placeholder="Organization name"
+            placeholder="Project name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required

@@ -32,7 +32,7 @@ export function OrgLayout({
   // Grouped nav — each group renders a small section label above its links.
   const groups: { label: string; items: { to: string; label: string; exact?: boolean }[] }[] = [
     {
-      label: "Workspace",
+      label: "Project",
       items: [
         { to: base, label: "Members", exact: true },
         { to: `${base}/chat`, label: "Chat" },
@@ -60,9 +60,9 @@ export function OrgLayout({
           <span className="brand-mark">{mark}</span>
           <span className="col" style={{ gap: 0, minWidth: 0 }}>
             <span className="brand" style={{ fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {orgName ?? "Organization"}
+              {orgName ?? "Project"}
             </span>
-            <span className="faint text-xs">All organizations →</span>
+            <span className="faint text-xs">All projects →</span>
           </span>
         </Link>
 

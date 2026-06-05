@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { select } from "../lib/api";
 import { OrgLayout } from "../components/OrgLayout";
+import { Skeleton, SkeletonCard } from "../components/Skeleton";
 import type { MeetingArtifacts, Organization, TranscriptSegment } from "../../shared/types";
 
 /**
@@ -56,7 +57,12 @@ export function RecapPage() {
       subtitle="Recording, AI notes & transcript"
       actions={<Link to={`/org/${orgId}/meetings`} className="muted text-sm">← Meetings</Link>}
     >
-      {loading && <div className="row muted"><span className="spinner" /> Loading…</div>}
+      {loading && (
+        <>
+          <Skeleton h={260} radius="var(--r-lg)" />
+          <SkeletonCard lines={4} />
+        </>
+      )}
       {error && <div className="notice error">{error}</div>}
       {!loading && !error && !artifacts && (
         <div className="empty">

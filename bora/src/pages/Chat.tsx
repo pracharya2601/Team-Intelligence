@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { callFn, select } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { OrgLayout } from "../components/OrgLayout";
+import { Skeleton } from "../components/Skeleton";
 import type { ChatMessageRow, ChatThread, Organization } from "../../shared/types";
 
 /**
@@ -19,6 +20,8 @@ export function ChatPage() {
   const [messages, setMessages] = useState<ChatMessageRow[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [threadsLoading, setThreadsLoading] = useState(true);
+  const [msgLoading, setMsgLoading] = useState(false);
   const [error, setError] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
@@ -42,12 +45,16 @@ export function ChatPage() {
   }
 
   useEffect(() => {
-    void loadThreads().catch((e) => setError(e?.message ?? "Failed to load chats"));
+    void loadThreads()
+      .catch((e) => setError(e?.message ?? "Failed to load chats"))
+      .finally(() => setThreadsLoading(false));
   }, [id]);
 
   useEffect(() => {
-    if (activeThread) void loadMessages(activeThread).catch(() => {});
-    else setMessages([]);
+    if (activeThread) {
+      setMsgLoading(true);
+      void loadMessages(activeThread).catch(() => {}).finally(() => setMsgLoading(false));
+    } else setMessages([]);
   }, [activeThread]);
 
   useEffect(() => {
@@ -122,8 +129,15 @@ export function ChatPage() {
         <div className="card col" style={{ minHeight: 0, gap: 10 }}>
           <button className="block" onClick={newChat} disabled={busy && !activeThread}>+ New chat</button>
           <div className="col" style={{ gap: 6, overflowY: "auto", minHeight: 0 }}>
-            {threads.length === 0 && <span className="muted text-sm">No chats yet.</span>}
-            {threads.map((t) => (
+            {threadsLoading && (
+              <>
+                <Skeleton h={34} />
+                <Skeleton h={34} />
+                <Skeleton h={34} />
+              </>
+            )}
+            {!threadsLoading && threads.length === 0 && <span className="muted text-sm">No chats yet.</span>}
+            {!threadsLoading && threads.map((t) => (
               <button
                 key={t.id}
                 className={`thread-item${t.id === activeThread ? " thread-active" : ""}`}
@@ -138,17 +152,27 @@ export function ChatPage() {
 
         <div className="card col" style={{ minHeight: 0 }}>
           <div className="col" style={{ flex: 1, gap: 10, overflowY: "auto", minHeight: 0 }}>
-            {messages.length === 0 && !busy && (
-              <div className="muted" style={{ margin: "auto", textAlign: "center" }}>
-                Ask Bora anything about your team, meetings, or projects.<br />
-                This chat is private to you.
+            {msgLoading ? (
+              <div className="col" style={{ gap: 10 }}>
+                <Skeleton w="55%" h={44} radius={16} style={{ alignSelf: "flex-start" }} />
+                <Skeleton w="38%" h={32} radius={16} style={{ alignSelf: "flex-end" }} />
+                <Skeleton w="62%" h={52} radius={16} style={{ alignSelf: "flex-start" }} />
               </div>
+            ) : (
+              <>
+                {messages.length === 0 && !busy && (
+                  <div className="muted" style={{ margin: "auto", textAlign: "center" }}>
+                    Ask Bora anything about your team, meetings, or projects.<br />
+                    This chat is private to you.
+                  </div>
+                )}
+                {messages.map((m) => (
+                  <div key={m.id} className={`bubble bubble-${m.role}`}>
+                    {m.content}
+                  </div>
+                ))}
+              </>
             )}
-            {messages.map((m) => (
-              <div key={m.id} className={`bubble bubble-${m.role}`}>
-                {m.content}
-              </div>
-            ))}
             {busy && <div className="bubble bubble-assistant muted">Bora is thinking…</div>}
             <div ref={endRef} />
           </div>

@@ -178,12 +178,40 @@ Inline (non-banner) text still uses `.error` / `.success-text` / `.muted`.
 
 ## Loading & empty states
 
+Prefer **skeletons** that mirror the real layout over a bare spinner. Reusable components live in
+`src/components/Skeleton.tsx` — import the one that matches the shape you're loading:
+
 ```tsx
-{loading && <div className="row muted"><span className="spinner" /> Loading…</div>}
+import { Skeleton, SkeletonText, SkeletonRow, SkeletonList, SkeletonCard, SkeletonStat, SkeletonGrid }
+  from "../components/Skeleton";
 
-{/* skeleton placeholder while data loads */}
-<div className="skeleton" style={{ height: 56, borderRadius: "var(--r)" }} />
+// base block — any size
+<Skeleton w="40%" h={16} radius="var(--r)" />
+<SkeletonText lines={3} />          // stacked text lines
+<SkeletonList rows={3} />           // list-row placeholders (action chip optional: action={false})
+<SkeletonCard lines={3} />          // card heading + body
+<SkeletonStat />                    // KPI placeholder
+<SkeletonGrid count={3} />          // responsive card grid (e.g. Home projects)
+```
 
+Wire it as the first branch of the triad, gated on an initial `loading` state (set `false` in the
+fetch's `finally`; don't flip it back to `true` on background refetches, or it flashes):
+
+```tsx
+const [loading, setLoading] = useState(true);
+// in load(): finally { setLoading(false); }
+
+{loading ? <SkeletonList rows={3} />
+  : rows.length === 0 ? <div className="empty">…</div>
+  : <div className="list">{rows.map(...)}</div>}
+```
+
+Spinner is still right for *button-busy* and inline actions:
+```tsx
+{busy && <span className="spinner" />}
+```
+
+```tsx
 {rows.length === 0 && (
   <div className="empty">
     <span className="empty-icon">📭</span>
