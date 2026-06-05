@@ -61,6 +61,13 @@ export function RecapPage() {
         </div>
       )}
 
+      {artifacts?.audio_url && (
+        <div className="panel col">
+          <h3 style={{ margin: 0 }}>Audio</h3>
+          <audio src={artifacts.audio_url} controls style={{ width: "100%" }} />
+        </div>
+      )}
+
       {notes && (
         <div className="panel col">
           <h3 style={{ margin: 0 }}>AI notes</h3>
