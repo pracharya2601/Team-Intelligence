@@ -61,7 +61,11 @@ The **living checklist** for Bora, derived from [`PLAN.md`](PLAN.md) (the full d
 - [x] **Deployed `org-members`** via `scripts/deploy-fn.mjs` (HTTP + service key — no MCP needed) + **verified 5/5**:
       invite→201, duplicate→409, set_role→200, outsider→403, remove→200. `remove` is a **soft-delete**
       (`status='removed'`; a hard DELETE from a function 502s at the gateway though it succeeds).
-- [ ] Flip invited→active on first login matching `invited_email` (post-auth hook function `on-auth`)
+- [x] Flip invited→active on first login matching `invited_email` — `functions/claim-invites.ts`
+      (SPA calls it in `auth.tsx` `refresh()` after `/me`). Email comes from the **verified JWT**
+      (never the body), writes via service key. Deployed + **verified 5/5**: claim→1, row flips to
+      active+user_id, idempotent second call→0. *(Used a client-called claim instead of a provider
+      post-auth trigger — reliable, idempotent, no special trigger type needed.)*
 - [x] Role gating in UI (admin-only controls) + at the function (active-admin check)
 - [ ] App shell sidebar nav (Chat · Meetings · Context · Members · Settings) — currently per-page headers only
 - [ ] **Verify (browser):** admin invites member → member joins → role gating holds. Function paths

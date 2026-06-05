@@ -5,7 +5,7 @@
  */
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { clearTokens, getToken, logout as apiLogout, me } from "./api";
+import { claimInvites, clearTokens, getToken, logout as apiLogout, me } from "./api";
 
 export interface User {
   id: string;
@@ -39,7 +39,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      setUser(await me());
+      const u = await me();
+      // Complete any pending org invites for this email before the app renders (best-effort,
+      // idempotent) so a freshly-invited teammate lands on their org without a manual reload.
+      try {
+        await claimInvites();
+      } catch {
+        /* non-fatal — they can still use the app; invites resolve on next login */
+      }
+      setUser(u);
     } catch {
       clearTokens();
       setUser(null);

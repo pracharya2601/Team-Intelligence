@@ -97,6 +97,15 @@ export async function ragQuery(collection: string, query: string, opts: { top_k?
   return asJson<{ answer?: string; chunks: Array<{ text: string; score: number }> }>(res);
 }
 
+/**
+ * Claim any org invitations pending for the signed-in user's email (status invited → active).
+ * Called once after login so a freshly-invited teammate's orgs show up immediately. Best-effort:
+ * the server derives the email from the verified JWT, not anything we send.
+ */
+export async function claimInvites(): Promise<{ claimed: number; orgs: string[] }> {
+  return callFn<{ claimed: number; orgs: string[] }>("claim-invites");
+}
+
 // ── Functions (all server logic) ─────────────────────────────────────────────
 export async function callFn<T = any>(name: string, body: unknown = {}): Promise<T> {
   const res = await fetch(`${appUrl}/fn/${name}`, {
