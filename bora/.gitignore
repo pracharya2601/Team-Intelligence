@@ -8,8 +8,9 @@
 /out/
 next-env.d.ts
 
-# production
+# production / build output
 /build
+/dist
 
 # secrets / env — NEVER commit
 .env
