@@ -43,6 +43,8 @@ export interface Bot {
   org_id: string;
   name: string;
   persona: string | null;
+  /** ElevenLabs voice the bot speaks with in meetings (Phase 3). null → server default. */
+  voice_id: string | null;
   slack_team_id: string | null;
   created_at: string;
 }
@@ -85,7 +87,9 @@ export interface TranscriptSegment {
 }
 
 /** The proactive bot's live control state. Two gates: speak_now (immediate, direct-address)
- *  and should_i_speak (confidence; raises hand at >0.7). gate_open = a human pressed "Go". */
+ *  and should_i_speak (confidence; raises hand at >0.7). gate_open = released to speak the
+ *  held pending_text — opened by a spoken "go on, Bora" (detected by the trigger), not a button.
+ *  hand_raised_at stamps when the hand went up so a stale point auto-lowers after ~60s. */
 export interface BotState {
   meeting_id: string;
   mode: BotMode;
@@ -94,6 +98,14 @@ export interface BotState {
   pending_text: string | null;
   gate_open: boolean;
   reason: string | null;
+  hand_raised_at: string | null;
+  /** While mode=speaking: the caption shown + the base64 MP3 the bot camera page plays
+   *  (Recall captures the page's audio). speak_seq increments per utterance so the page
+   *  reliably detects a NEW clip to play (Output Media has no separate audio endpoint —
+   *  the webpage IS the audio path). */
+  speaking_text: string | null;
+  speaking_audio: string | null;
+  speak_seq: number;
   last_spoke_at: string | null;
   updated_at: string;
 }

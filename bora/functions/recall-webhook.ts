@@ -192,6 +192,21 @@ async function insertTranscript(evt: RecallEvent, ctx: FnCtx, meetingId: string)
      VALUES ($1, $2, $3, $4, $5, $6)`,
     [meetingId, speaker, text, tsStart, tsEnd, isFinal],
   );
+
+  // Proactive cascade (Phase 3): on each FINAL segment, run the trigger over the rolling window.
+  // Fire-and-forget server→server so we still ack Recall fast (15s budget); speak-trigger applies
+  // its own state machine + gates. Partial segments don't trigger (too noisy/incomplete).
+  if (isFinal) await fireSpeakTrigger(ctx, meetingId);
+}
+
+/** Kick the speak-trigger function (cheap Nebius pass → bot_state). Non-fatal if it errors. */
+async function fireSpeakTrigger(ctx: FnCtx, meetingId: string): Promise<void> {
+  const url = `${ctx.env.BUTTERBASE_API_URL}/v1/${ctx.env.BUTTERBASE_APP_ID}/fn/speak-trigger`;
+  await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${ctx.env.BUTTERBASE_API_KEY}` },
+    body: JSON.stringify({ meetingId }),
+  }).catch((e) => console.warn("recall-webhook: fireSpeakTrigger failed (non-fatal)", e instanceof Error ? e.message : e));
 }
 
 async function finalizeMeeting(ctx: FnCtx, meetingId: string, botId: string): Promise<void> {

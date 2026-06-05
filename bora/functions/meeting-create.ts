@@ -62,7 +62,11 @@ export default async function handler(req: Request, ctx: FnCtx): Promise<Respons
   // 2. Create the Recall bot.
   const recallEnv: RecallEnv = { RECALL_API_KEY: ctx.env.RECALL_API_KEY, RECALL_REGION: ctx.env.RECALL_REGION };
   const appBase = (ctx.env.APP_BASE_URL || "").replace(/\/$/, "");
-  const outputVideoUrl = appBase ? `${appBase}/bot/${meeting.id}` : undefined; // bot camera page (Phase 3 fills it in)
+  const outputVideoUrl = appBase ? `${appBase}/bot/${meeting.id}` : undefined; // bot camera page (live in Phase 3)
+  // Live transcript → our recall-webhook (drives the Phase 3 proactive cascade). Same endpoint that
+  // handles lifecycle events; it routes transcript.data → speak-trigger.
+  const bbBase = (ctx.env.BUTTERBASE_API_URL || "").replace(/\/$/, "");
+  const realtimeWebhookUrl = bbBase ? `${bbBase}/v1/${ctx.env.BUTTERBASE_APP_ID}/fn/recall-webhook` : undefined;
 
   let recallBot;
   try {
@@ -71,6 +75,7 @@ export default async function handler(req: Request, ctx: FnCtx): Promise<Respons
       botName: "Bora",
       joinAt,
       outputVideoUrl,
+      realtimeWebhookUrl,
       metadata: { meeting_id: String(meeting.id), org_id: orgId }, // echoed on every webhook → correlation
     });
   } catch (e) {

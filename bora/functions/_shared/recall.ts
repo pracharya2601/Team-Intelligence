@@ -76,6 +76,10 @@ export interface CreateBotInput {
   joinAt?: string;
   /** Public URL Recall renders as the bot's camera (our /bot/:meetingId page). */
   outputVideoUrl?: string;
+  /** Public URL Recall POSTs LIVE in-call events to (real-time transcript → speak-trigger).
+   *  Without this, only post-meeting artifacts arrive; the proactive cascade needs live transcript.
+   *  Typically the same recall-webhook endpoint (it routes transcript.data). */
+  realtimeWebhookUrl?: string;
   /** Custom key/values echoed back on webhooks — we stash our meeting_id here to correlate events. */
   metadata?: Record<string, string>;
 }
@@ -94,8 +98,19 @@ export async function createBot(env: RecallEnv, input: CreateBotInput): Promise<
 
   // Point the bot's camera at our live status page (Output Media → webpage as video).
   // Recall renders the URL headlessly; it must be public (ngrok in dev) — never localhost.
+  // NOTE: with Output Media the webpage IS the audio path — the page plays Bora's TTS and Recall
+  // captures it. Do NOT also use the separate Output Audio endpoint (Recall forbids it while a
+  // webpage is the camera). See recall-output-media.
   if (input.outputVideoUrl) {
     recording_config.output_media = { camera: { kind: "webpage", config: { url: input.outputVideoUrl } } };
+  }
+
+  // Real-time endpoint: have Recall POST live transcript events to our webhook while in-call. This
+  // is what feeds the Nebius trigger (the proactive cascade). Requires bot to reach in_call_recording.
+  if (input.realtimeWebhookUrl) {
+    recording_config.realtime_endpoints = [
+      { type: "webhook", url: input.realtimeWebhookUrl, events: ["transcript.data", "transcript.partial_data"] },
+    ];
   }
 
   const body: Record<string, unknown> = {
