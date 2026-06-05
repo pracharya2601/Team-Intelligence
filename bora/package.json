@@ -12,6 +12,8 @@
     "deploy": "npm run build && npm run zip",
     "check": "tsx scripts/check.ts",
     "check:recall": "tsx scripts/check-recall.ts",
+    "check:nebius": "tsx scripts/check-nebius.ts",
+    "check:elevenlabs": "tsx scripts/check-elevenlabs.ts",
     "test": "tsx tests/phase0.test.ts"
   },
   "dependencies": {

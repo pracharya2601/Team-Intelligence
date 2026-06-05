@@ -11,6 +11,13 @@ import type { Meeting, Organization } from "../../shared/types";
  *
  * Calling the bot is admin-only — enforced in the function + RLS; here we surface the error.
  */
+interface VoiceOption {
+  voice_id: string;
+  name: string;
+  labels?: Record<string, string>;
+  preview_url?: string | null;
+}
+
 export function MeetingsPage() {
   const { id: orgId = "" } = useParams();
   const [org, setOrg] = useState<Organization | null>(null);
@@ -18,6 +25,11 @@ export function MeetingsPage() {
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  // Bora's voice (per-org). Loaded from ElevenLabs via the speak-voice function.
+  const [voices, setVoices] = useState<VoiceOption[]>([]);
+  const [voiceId, setVoiceId] = useState("");
+  const [voiceSaved, setVoiceSaved] = useState(false);
 
   async function load() {
     setError("");
@@ -33,8 +45,36 @@ export function MeetingsPage() {
     }
   }
 
+  async function loadVoices() {
+    try {
+      const res = await callFn<{ voices: VoiceOption[]; current: string | null }>("speak-voice", { action: "list", orgId });
+      setVoices(res.voices ?? []);
+      setVoiceId(res.current ?? "");
+    } catch {
+      /* voice picker is optional; if speak-voice isn't deployed yet, just hide it */
+    }
+  }
+
+  async function saveVoice(next: string) {
+    setVoiceId(next);
+    setVoiceSaved(false);
+    try {
+      await callFn("speak-voice", { action: "set", orgId, voiceId: next });
+      setVoiceSaved(true);
+      setTimeout(() => setVoiceSaved(false), 2000);
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to set voice");
+    }
+  }
+
+  function previewVoice() {
+    const v = voices.find((x) => x.voice_id === voiceId);
+    if (v?.preview_url) void new Audio(v.preview_url).play().catch(() => {});
+  }
+
   useEffect(() => {
     void load();
+    void loadVoices();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId]);
 
@@ -70,6 +110,27 @@ export function MeetingsPage() {
         </div>
         {error && <div className="error">{error}</div>}
       </form>
+
+      {voices.length > 0 && (
+        <div className="panel col">
+          <h3 style={{ margin: 0 }}>Bora's voice</h3>
+          <div className="muted">The voice Bora speaks with in meetings (ElevenLabs). Admins only.</div>
+          <div className="row">
+            <select value={voiceId} onChange={(e) => saveVoice(e.target.value)} style={{ flex: 1 }}>
+              <option value="">Default (River)</option>
+              {voices.map((v) => (
+                <option key={v.voice_id} value={v.voice_id}>
+                  {v.name}
+                  {v.labels?.gender ? ` · ${v.labels.gender}` : ""}
+                  {v.labels?.accent ? ` · ${v.labels.accent}` : ""}
+                </option>
+              ))}
+            </select>
+            <button type="button" className="secondary" onClick={previewVoice} disabled={!voiceId}>▶ Preview</button>
+          </div>
+          {voiceSaved && <div className="muted" style={{ color: "#5cd6a0" }}>Saved ✓</div>}
+        </div>
+      )}
 
       <div className="panel col">
         <h3 style={{ margin: 0 }}>Recent meetings</h3>
