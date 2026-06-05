@@ -29,8 +29,8 @@ export function RecapPage() {
     void (async () => {
       try {
         const [arts, segs] = await Promise.all([
-          select<MeetingArtifacts>("meeting_artifacts", { meeting_id: id }),
-          select<TranscriptSegment>("transcript_segments", { meeting_id: id, is_final: true, order: "ts_start.asc" }),
+          select<MeetingArtifacts>("meeting_artifacts", { meeting_id: `eq.${id}` }),
+          select<TranscriptSegment>("transcript_segments", { meeting_id: `eq.${id}`, is_final: "is.true", order: "ts_start.asc" }),
         ]);
         setArtifacts(arts[0] ?? null);
         setSegments(segs);
