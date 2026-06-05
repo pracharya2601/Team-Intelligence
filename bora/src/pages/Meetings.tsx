@@ -94,25 +94,35 @@ export function MeetingsPage() {
   }
 
   return (
-    <OrgLayout orgId={orgId} orgName={org?.name} title="Meetings">
-      <form className="panel col" onSubmit={callBot}>
-        <h3 style={{ margin: 0 }}>Call Bora into a meeting</h3>
-        <div className="muted">Paste a Google Meet, Zoom, or Teams link. Admins only.</div>
+    <OrgLayout
+      orgId={orgId}
+      orgName={org?.name}
+      title="Meetings"
+      subtitle="Send Bora to a call, then review the recap"
+    >
+      <form className="card col" onSubmit={callBot}>
+        <div className="col" style={{ gap: 2 }}>
+          <h3 style={{ margin: 0 }}>Call Bora into a meeting</h3>
+          <span className="muted text-sm">Paste a Google Meet, Zoom, or Teams link. Admins only.</span>
+        </div>
         <div className="row">
           <input
+            className="grow"
             placeholder="https://meet.google.com/abc-defg-hij"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             required
-            style={{ flex: 1 }}
           />
-          <button type="submit" disabled={busy || !orgId || !url.trim()}>{busy ? "Joining…" : "Send Bora"}</button>
+          <button type="submit" disabled={busy || !orgId || !url.trim()}>
+            {busy && <span className="spinner" />}
+            {busy ? "Joining…" : "Send Bora"}
+          </button>
         </div>
-        {error && <div className="error">{error}</div>}
+        {error && <div className="notice error">{error}</div>}
       </form>
 
       {voices.length > 0 && (
-        <div className="panel col">
+        <section className="card col">
           <h3 style={{ margin: 0 }}>Bora's voice</h3>
           <div className="muted">The voice Bora speaks with in meetings (ElevenLabs). Admins only.</div>
           <div className="row">
@@ -129,33 +139,46 @@ export function MeetingsPage() {
             <button type="button" className="secondary" onClick={previewVoice} disabled={!voiceId}>▶ Preview</button>
           </div>
           {voiceSaved && <div className="muted" style={{ color: "#5cd6a0" }}>Saved ✓</div>}
-        </div>
+        </section>
       )}
 
-      <div className="panel col">
+      <section className="card col">
+
         <h3 style={{ margin: 0 }}>Recent meetings</h3>
-        {meetings.length === 0 && <div className="muted">No meetings yet.</div>}
-        {meetings.map((m) => (
-          <Link
-            key={m.id}
-            to={`/org/${orgId}/meetings/${m.id}`}
-            className="row"
-            style={{ justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 12, color: "var(--text)" }}
-          >
-            <div className="col" style={{ gap: 2 }}>
-              <span>{m.platform ?? "meeting"} · <StatusBadge status={m.status} /></span>
-              <span className="muted" style={{ fontSize: 12, wordBreak: "break-all" }}>{m.meeting_url}</span>
-            </div>
-            <span className="muted">{new Date(m.created_at).toLocaleString()}</span>
-          </Link>
-        ))}
-      </div>
+        {meetings.length === 0 ? (
+          <div className="empty">
+            <span className="empty-icon">🎥</span>
+            <span>No meetings yet</span>
+            <span className="text-sm">Paste a link above to send Bora to its first call.</span>
+          </div>
+        ) : (
+          <div className="list">
+          {meetings.map((m) => (
+            <Link
+              key={m.id}
+              to={`/org/${orgId}/meetings/${m.id}`}
+              className="list-row"
+              style={{ color: "var(--text)" }}
+            >
+              <div className="col" style={{ gap: 4, minWidth: 0 }}>
+                <span className="row" style={{ gap: 8 }}>
+                  <span style={{ textTransform: "capitalize" }}>{m.platform ?? "meeting"}</span>
+                  <StatusBadge status={m.status} />
+                </span>
+                <span className="muted text-xs" style={{ wordBreak: "break-all" }}>{m.meeting_url}</span>
+              </div>
+              <span className="muted text-sm">{new Date(m.created_at).toLocaleString()}</span>
+            </Link>
+          ))}
+          </div>
+        )}
+      </section>
     </OrgLayout>
   );
 }
 
 function StatusBadge({ status }: { status: Meeting["status"] }) {
-  const color =
-    status === "live" ? "#5cd6a0" : status === "done" ? "var(--muted)" : status === "error" ? "var(--danger)" : "var(--accent)";
-  return <span style={{ color, fontWeight: 600 }}>{status}</span>;
+  const cls =
+    status === "live" ? "badge-active" : status === "error" ? "badge-error" : status === "done" ? "badge-member" : "badge-admin";
+  return <span className={`badge ${cls}`}><i className="dot" />{status}</span>;
 }

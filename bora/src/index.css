@@ -286,7 +286,8 @@ main.col { max-width: 960px; }
 }
 
 /* ── Chat ────────────────────────────────────────────────────────────────── */
-.chat-layout { display: grid; grid-template-columns: 260px 1fr; gap: 16px; align-items: start; }
+/* Default: stretch panes to fill the available height (Chat runs in OrgLayout `fill` mode). */
+.chat-layout { display: grid; grid-template-columns: 260px 1fr; gap: 16px; align-items: stretch; height: 100%; min-height: 0; }
 .thread-item {
   background: transparent; color: var(--muted); text-align: left; border: 1px solid transparent;
   border-radius: var(--r-sm); padding: 9px 11px; font-size: 13px; font-weight: 500; box-shadow: none;
@@ -301,6 +302,29 @@ main.col { max-width: 960px; }
 .bubble-user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 5px; }
 .bubble-assistant { align-self: flex-start; background: var(--panel); border: 1px solid var(--border); border-bottom-left-radius: 5px; }
 @media (max-width: 760px) { .chat-layout { grid-template-columns: 1fr; } }
+
+/* Modern composer — rounded container wrapping an auto-growing textarea + embedded send */
+.composer {
+  display: flex; align-items: flex-end; gap: 8px;
+  background: var(--bg-subtle); border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg); padding: 8px 8px 8px 16px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
+.composer textarea {
+  flex: 1; min-width: 0; border: 0; background: transparent; box-shadow: none;
+  padding: 7px 0; margin: 0; resize: none; min-height: 24px; max-height: 200px;
+  line-height: 1.5; color: var(--text);
+}
+.composer textarea:hover { border: 0; }
+.composer textarea:focus { outline: none; box-shadow: none; border: 0; }
+.composer textarea::placeholder { color: var(--faint); }
+.composer-send {
+  flex: none; width: 36px; height: 36px; padding: 0; border-radius: var(--r-full);
+  display: grid; place-items: center; font-size: 17px; line-height: 1;
+}
+.composer-send:disabled { opacity: 0.4; }
+.composer-hint { color: var(--faint); font-size: 11px; padding: 6px 4px 0; text-align: right; }
 
 /* ── Animation utilities ─────────────────────────────────────────────────── */
 @keyframes spin { to { transform: rotate(360deg); } }

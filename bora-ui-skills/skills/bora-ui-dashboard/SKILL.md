@@ -158,13 +158,30 @@ A fixed list rail + a flexible detail pane. Bora's Chat uses `.chat-layout` + `.
           </div>
         ))}
       </div>
-      <div className="row">
-        <input className="grow" placeholder="Message…" />
-        <button>Send</button>
-      </div>
+      {/* modern composer: auto-grow textarea + embedded circular send */}
+      <form onSubmit={send} style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+        <div className="composer">
+          <textarea ref={taRef} rows={1} placeholder="Message…" value={input}
+            onChange={e => setInput(e.target.value)} onKeyDown={onKeyDown} />
+          <button type="submit" className="composer-send" aria-label="Send"
+            disabled={!input.trim()}>↑</button>
+        </div>
+        <div className="composer-hint">Enter to send · Shift+Enter for new line</div>
+      </form>
     </section>
   </div>
 </OrgLayout>
+```
+
+The composer is full-height-aware (use `OrgLayout fill`), auto-grows to a max height, and sends on
+Enter (Shift+Enter = newline). Classes: `.composer` (focus-ring container), `.composer-send`
+(circular icon button), `.composer-hint`. Auto-grow handler:
+```tsx
+useEffect(() => {
+  const ta = taRef.current; if (!ta) return;
+  ta.style.height = "0px";
+  ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+}, [input]);
 ```
 
 ---

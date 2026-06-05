@@ -121,24 +121,29 @@ export function SettingsPage() {
   }
 
   return (
-    <OrgLayout orgId={id} orgName={org?.name} title="Settings">
-      {!isAdmin && <div className="muted">Only admins can change settings.</div>}
+    <OrgLayout
+      orgId={id}
+      orgName={org?.name}
+      title="Settings"
+      subtitle="Workspace & bot configuration"
+    >
+      {!isAdmin && <div className="notice info">Only admins can change settings.</div>}
 
-      <form className="panel col" onSubmit={saveOrg}>
+      <form className="card col" onSubmit={saveOrg}>
         <h3 style={{ margin: 0 }}>Organization</h3>
-        <label className="muted" style={{ fontSize: 13 }}>Name</label>
+        <label className="label">Name</label>
         <div className="row">
           <input value={orgName} onChange={(e) => setOrgName(e.target.value)} disabled={!isAdmin} style={{ flex: 1 }} />
           {isAdmin && <button type="submit" disabled={busy !== "" || !orgName.trim()}>{busy === "org" ? "Saving…" : "Save"}</button>}
         </div>
       </form>
 
-      <form className="panel col" onSubmit={saveBot}>
+      <form className="card col" onSubmit={saveBot}>
         <h3 style={{ margin: 0 }}>Bot</h3>
         <div className="muted" style={{ fontSize: 13 }}>How Bora introduces itself and behaves in meetings and chat.</div>
-        <label className="muted" style={{ fontSize: 13 }}>Name</label>
+        <label className="label">Name</label>
         <input value={botName} onChange={(e) => setBotName(e.target.value)} disabled={!isAdmin} placeholder="Bora" />
-        <label className="muted" style={{ fontSize: 13 }}>Persona</label>
+        <label className="label">Persona</label>
         <textarea
           value={persona}
           onChange={(e) => setPersona(e.target.value)}
@@ -154,7 +159,7 @@ export function SettingsPage() {
         )}
       </form>
 
-      <div className="panel col">
+      <div className="card col">
         <h3 style={{ margin: 0 }}>Email (Gmail)</h3>
         <div className="muted" style={{ fontSize: 13 }}>
           Connect a Gmail account so Bora can email admins a recap after each meeting.
@@ -182,8 +187,8 @@ export function SettingsPage() {
         </div>
       </div>
 
-      {notice && <div className="muted">{notice}</div>}
-      {error && <div className="error">{error}</div>}
+      {notice && <div className="notice success">{notice}</div>}
+      {error && <div className="notice error">{error}</div>}
     </OrgLayout>
   );
 }

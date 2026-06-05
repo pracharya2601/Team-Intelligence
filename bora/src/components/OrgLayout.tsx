@@ -14,6 +14,7 @@ export function OrgLayout({
   subtitle,
   actions,
   children,
+  fill = false,
 }: {
   orgId: string;
   orgName?: string | null;
@@ -21,6 +22,8 @@ export function OrgLayout({
   subtitle?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
+  /** Full-height mode: content fills the viewport and scrolls internally (e.g. Chat). */
+  fill?: boolean;
 }) {
   const { user, logout } = useAuth();
   const { pathname } = useLocation();
@@ -89,7 +92,15 @@ export function OrgLayout({
         </div>
       </aside>
 
-      <main className="col" style={{ padding: "28px 28px 48px", gap: 20, minWidth: 0 }}>
+      <main
+        className="col"
+        style={{
+          padding: fill ? "24px 28px 20px" : "28px 28px 48px",
+          gap: fill ? 16 : 20,
+          minWidth: 0,
+          ...(fill ? { height: "100vh", overflow: "hidden" } : null),
+        }}
+      >
         <header className="page-header">
           <div className="col" style={{ gap: 0 }}>
             <h1 className="page-title">{title}</h1>
@@ -97,7 +108,11 @@ export function OrgLayout({
           </div>
           {actions && <div className="row">{actions}</div>}
         </header>
-        {children}
+        {fill ? (
+          <div className="col" style={{ flex: 1, minHeight: 0, gap: 0 }}>{children}</div>
+        ) : (
+          children
+        )}
       </main>
     </div>
   );

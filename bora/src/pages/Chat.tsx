@@ -21,6 +21,7 @@ export function ChatPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
+  const taRef = useRef<HTMLTextAreaElement>(null);
   const tmpId = useRef(0);
 
   async function loadThreads() {
@@ -53,6 +54,22 @@ export function ChatPage() {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, busy]);
 
+  // Auto-grow the composer up to a max height as the user types.
+  useEffect(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = "0px";
+    ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+  }, [input]);
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    // Enter sends; Shift+Enter inserts a newline.
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      void send();
+    }
+  }
+
   function newChat() {
     setActiveThread(null);
     setMessages([]);
@@ -60,8 +77,8 @@ export function ChatPage() {
     setInput("");
   }
 
-  async function send(e: React.FormEvent) {
-    e.preventDefault();
+  async function send(e?: { preventDefault: () => void }) {
+    e?.preventDefault();
     const content = input.trim();
     if (!content || busy) return;
     setBusy(true);
@@ -100,25 +117,27 @@ export function ChatPage() {
   }
 
   return (
-    <OrgLayout orgId={id} orgName={org?.name} title="Chat">
+    <OrgLayout orgId={id} orgName={org?.name} title="Chat" subtitle="Private to you" fill>
       <div className="chat-layout">
-        <div className="panel col" style={{ gap: 8, alignSelf: "start" }}>
-          <button onClick={newChat} disabled={busy && !activeThread}>+ New chat</button>
-          {threads.length === 0 && <span className="muted" style={{ fontSize: 13 }}>No chats yet.</span>}
-          {threads.map((t) => (
-            <button
-              key={t.id}
-              className={`thread-item${t.id === activeThread ? " thread-active" : ""}`}
-              onClick={() => setActiveThread(t.id)}
-              title={t.title ?? "Untitled"}
-            >
-              {t.title || "Untitled chat"}
-            </button>
-          ))}
+        <div className="card col" style={{ minHeight: 0, gap: 10 }}>
+          <button className="block" onClick={newChat} disabled={busy && !activeThread}>+ New chat</button>
+          <div className="col" style={{ gap: 6, overflowY: "auto", minHeight: 0 }}>
+            {threads.length === 0 && <span className="muted text-sm">No chats yet.</span>}
+            {threads.map((t) => (
+              <button
+                key={t.id}
+                className={`thread-item${t.id === activeThread ? " thread-active" : ""}`}
+                onClick={() => setActiveThread(t.id)}
+                title={t.title ?? "Untitled"}
+              >
+                {t.title || "Untitled chat"}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="panel col" style={{ minHeight: 420 }}>
-          <div className="col" style={{ flex: 1, gap: 10, overflowY: "auto", maxHeight: 540 }}>
+        <div className="card col" style={{ minHeight: 0 }}>
+          <div className="col" style={{ flex: 1, gap: 10, overflowY: "auto", minHeight: 0 }}>
             {messages.length === 0 && !busy && (
               <div className="muted" style={{ margin: "auto", textAlign: "center" }}>
                 Ask Bora anything about your team, meetings, or projects.<br />
@@ -134,17 +153,29 @@ export function ChatPage() {
             <div ref={endRef} />
           </div>
 
-          <form className="row" onSubmit={send} style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-            <input
-              placeholder="Message Bora…"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              disabled={busy}
-              style={{ flex: 1 }}
-            />
-            <button type="submit" disabled={busy || !input.trim()}>{busy ? "…" : "Send"}</button>
+          <form onSubmit={send} style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+            <div className="composer">
+              <textarea
+                ref={taRef}
+                rows={1}
+                placeholder="Message Bora…"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={onKeyDown}
+                disabled={busy}
+              />
+              <button
+                type="submit"
+                className="composer-send"
+                aria-label="Send message"
+                disabled={busy || !input.trim()}
+              >
+                {busy ? <span className="spinner" /> : "↑"}
+              </button>
+            </div>
+            <div className="composer-hint">Enter to send · Shift+Enter for new line</div>
           </form>
-          {error && <div className="error">{error}</div>}
+          {error && <div className="notice error">{error}</div>}
         </div>
       </div>
     </OrgLayout>

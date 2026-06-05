@@ -79,38 +79,54 @@ export function ContextPage() {
   }
 
   return (
-    <OrgLayout orgId={id} orgName={org?.name} title="Knowledge">
+    <OrgLayout
+      orgId={id}
+      orgName={org?.name}
+      title="Knowledge"
+      subtitle="Sources Bora draws on to answer in chat & meetings"
+    >
       {!isAdmin && (
-        <div className="muted">You can see the team's knowledge sources. Only admins can add or remove them.</div>
+        <div className="notice info">You can see the team's knowledge sources. Only admins can add or remove them.</div>
       )}
 
-      <div className="panel col">
+      <section className="card col">
         <div className="row" style={{ justifyContent: "space-between" }}>
           <h3 style={{ margin: 0 }}>Sources</h3>
-          <span className="muted">{ready}/{sources.length} ready</span>
+          <span className="muted text-sm">{ready}/{sources.length} ready</span>
         </div>
-        {sources.length === 0 && <span className="muted">No knowledge yet. {isAdmin ? "Add some below." : ""}</span>}
-        {sources.map((s) => (
-          <div key={s.id} className="row" style={{ justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 10 }}>
-            <div className="col" style={{ gap: 2 }}>
-              <span>{s.url || "Untitled"}</span>
-              <span className="muted" style={{ fontSize: 12 }}>
-                <span className={`badge badge-${s.type}`}>{s.type}</span>
-                <span className={`badge badge-${s.status}`}>{s.status}</span>
-              </span>
-            </div>
-            {isAdmin && (
-              <button className="secondary" disabled={busy} onClick={() => remove(s.id)}>Remove</button>
-            )}
+        {sources.length === 0 ? (
+          <div className="empty">
+            <span className="empty-icon">🗂️</span>
+            <span>No knowledge yet</span>
+            {isAdmin && <span className="text-sm">Add notes, docs, or facts below.</span>}
           </div>
-        ))}
-      </div>
+        ) : (
+          <div className="list">
+          {sources.map((s) => (
+            <div key={s.id} className="list-row">
+              <div className="col" style={{ gap: 4, minWidth: 0 }}>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.url || "Untitled"}</span>
+                <span style={{ fontSize: 12 }}>
+                  <span className={`badge badge-${s.type}`}>{s.type}</span>
+                  <span className={`badge badge-${s.status}`}>{s.status}</span>
+                </span>
+              </div>
+              {isAdmin && (
+                <button className="secondary sm" disabled={busy} onClick={() => remove(s.id)}>Remove</button>
+              )}
+            </div>
+          ))}
+          </div>
+        )}
+      </section>
 
       {isAdmin && (
-        <form className="panel col" onSubmit={add}>
-          <h3 style={{ margin: 0 }}>Add knowledge</h3>
-          <div className="muted">Paste notes, docs, or facts about your team or projects. Bora will use them in chat.
-            (URL & GitHub ingestion via RocketRide is coming.)</div>
+        <form className="card col" onSubmit={add}>
+          <div className="col" style={{ gap: 2 }}>
+            <h3 style={{ margin: 0 }}>Add knowledge</h3>
+            <span className="muted text-sm">Paste notes, docs, or facts about your team or projects. Bora will use them in chat.
+              (URL & GitHub ingestion via RocketRide is coming.)</span>
+          </div>
           <input
             placeholder="Title (e.g. Q2 Roadmap)"
             value={title}
@@ -130,8 +146,8 @@ export function ContextPage() {
         </form>
       )}
 
-      {notice && <div className="muted">{notice}</div>}
-      {error && <div className="error">{error}</div>}
+      {notice && <div className="notice success">{notice}</div>}
+      {error && <div className="notice error">{error}</div>}
     </OrgLayout>
   );
 }

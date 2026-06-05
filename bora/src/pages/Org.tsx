@@ -82,22 +82,28 @@ export function OrgPage() {
   }
 
   return (
-    <OrgLayout orgId={id} orgName={org?.name} title="Members">
+    <OrgLayout
+      orgId={id}
+      orgName={org?.name}
+      title="Members"
+      subtitle="People with access to this workspace"
+    >
       {!isAdmin && org && (
-        <div className="muted">You're a member of this org. Only admins can invite or change roles.</div>
+        <div className="notice info">You're a member of this org. Only admins can invite or change roles.</div>
       )}
 
-      <div className="panel col">
+      <section className="card col">
         <div className="row" style={{ justifyContent: "space-between" }}>
           <h3 style={{ margin: 0 }}>Members</h3>
-          <span className="muted">{members.length}</span>
+          <span className="muted text-sm">{members.length}</span>
         </div>
 
+        <div className="list">
         {members.map((m) => (
-          <div key={m.id} className="row" style={{ justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 10 }}>
-            <div className="col" style={{ gap: 2 }}>
+          <div key={m.id} className="list-row">
+            <div className="col" style={{ gap: 4 }}>
               <span>{label(m)}</span>
-              <span className="muted" style={{ fontSize: 12 }}>
+              <span style={{ fontSize: 12 }}>
                 <span className={`badge badge-${m.role}`}>{m.role}</span>
                 <span className={`badge badge-${m.status}`}>{m.status}</span>
               </span>
@@ -105,7 +111,7 @@ export function OrgPage() {
             {isAdmin && m.user_id !== user?.id && (
               <div className="row">
                 <button
-                  className="secondary"
+                  className="secondary sm"
                   disabled={busy}
                   onClick={() =>
                     act(
@@ -123,7 +129,7 @@ export function OrgPage() {
                   {m.role === "admin" ? "Make member" : "Make admin"}
                 </button>
                 <button
-                  className="secondary"
+                  className="secondary sm"
                   disabled={busy}
                   onClick={() =>
                     act(
@@ -138,20 +144,23 @@ export function OrgPage() {
             )}
           </div>
         ))}
-      </div>
+        </div>
+      </section>
 
       {isAdmin && (
-        <form className="panel col" onSubmit={invite}>
-          <h3 style={{ margin: 0 }}>Invite a teammate</h3>
-          <div className="muted">They join as a member (or admin) when they sign in with this email.</div>
+        <form className="card col" onSubmit={invite}>
+          <div className="col" style={{ gap: 2 }}>
+            <h3 style={{ margin: 0 }}>Invite a teammate</h3>
+            <span className="muted text-sm">They join as a member (or admin) when they sign in with this email.</span>
+          </div>
           <div className="row">
             <input
+              className="grow"
               type="email"
               placeholder="teammate@gmail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              style={{ flex: 1 }}
             />
             <select value={role} onChange={(e) => setRole(e.target.value as "member" | "admin")}>
               <option value="member">Member</option>
@@ -162,8 +171,8 @@ export function OrgPage() {
         </form>
       )}
 
-      {notice && <div className="muted">{notice}</div>}
-      {error && <div className="error">{error}</div>}
+      {notice && <div className="notice success">{notice}</div>}
+      {error && <div className="notice error">{error}</div>}
     </OrgLayout>
   );
 }

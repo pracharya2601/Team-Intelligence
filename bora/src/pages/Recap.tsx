@@ -53,20 +53,27 @@ export function RecapPage() {
       orgId={orgId}
       orgName={org?.name}
       title="Meeting recap"
-      actions={<Link to={`/org/${orgId}/meetings`} className="muted">← Meetings</Link>}
+      subtitle="Recording, AI notes & transcript"
+      actions={<Link to={`/org/${orgId}/meetings`} className="muted text-sm">← Meetings</Link>}
     >
-      {loading && <div className="muted">Loading…</div>}
-      {error && <div className="error">{error}</div>}
-      {!loading && !artifacts && <div className="muted">No recap yet — it appears after the meeting ends.</div>}
+      {loading && <div className="row muted"><span className="spinner" /> Loading…</div>}
+      {error && <div className="notice error">{error}</div>}
+      {!loading && !error && !artifacts && (
+        <div className="empty">
+          <span className="empty-icon">📝</span>
+          <span>No recap yet</span>
+          <span className="text-sm">It appears automatically after the meeting ends.</span>
+        </div>
+      )}
 
       {artifacts?.video_url && (
-        <div className="panel">
-          <video src={artifacts.video_url} controls style={{ width: "100%", borderRadius: 8 }} />
+        <div className="card" style={{ padding: 8 }}>
+          <video src={artifacts.video_url} controls style={{ width: "100%", borderRadius: "var(--r)", display: "block" }} />
         </div>
       )}
 
       {notes && (
-        <div className="panel col">
+        <div className="card col">
           <h3 style={{ margin: 0 }}>AI notes</h3>
           {notes.summary && <p style={{ margin: 0 }}>{notes.summary}</p>}
           {notes.decisions?.length ? (
@@ -85,7 +92,7 @@ export function RecapPage() {
       )}
 
       {segments.length > 0 && (
-        <div className="panel col">
+        <div className="card col">
           <h3 style={{ margin: 0 }}>Transcript</h3>
           {segments.map((s) => (
             <div key={s.id}>

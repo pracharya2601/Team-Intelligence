@@ -36,15 +36,24 @@ export function LoginPage() {
 
   return (
     <div className="center">
-      <div className="panel col" style={{ width: 360 }}>
-        <div className="brand" style={{ fontSize: 28 }}>Bora</div>
-        <div className="muted">Your team's meeting bot.</div>
+      <div className="card col" style={{ width: 380, gap: 16 }}>
+        <div className="col" style={{ gap: 10, alignItems: "center", textAlign: "center" }}>
+          <span className="brand-mark" style={{ width: 40, height: 40, borderRadius: 11, fontSize: 20 }}>B</span>
+          <div className="col" style={{ gap: 2 }}>
+            <div className="brand" style={{ fontSize: 26 }}>Bora</div>
+            <div className="muted text-sm">Your team's meeting bot.</div>
+          </div>
+        </div>
 
-        <button onClick={() => googleLogin(`${window.location.origin}/auth/callback`)}>
+        <button className="block" onClick={() => googleLogin(`${window.location.origin}/auth/callback`)}>
           Continue with Google
         </button>
 
-        <div className="muted" style={{ textAlign: "center" }}>or</div>
+        <div className="row" style={{ gap: 10 }}>
+          <hr className="divider grow" />
+          <span className="faint text-xs">OR</span>
+          <hr className="divider grow" />
+        </div>
 
         <form className="col" onSubmit={submit}>
           {mode === "signup" && (
@@ -64,14 +73,15 @@ export function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          {error && <div className="error">{error}</div>}
-          <button type="submit" disabled={busy}>
+          {error && <div className="notice error">{error}</div>}
+          <button className="block" type="submit" disabled={busy}>
+            {busy && <span className="spinner" />}
             {busy ? "…" : mode === "login" ? "Log in" : "Sign up"}
           </button>
         </form>
 
         <button
-          className="secondary"
+          className="ghost sm"
           onClick={() => setMode(mode === "login" ? "signup" : "login")}
         >
           {mode === "login" ? "Need an account? Sign up" : "Have an account? Log in"}
