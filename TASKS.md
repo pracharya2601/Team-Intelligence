@@ -155,16 +155,20 @@ The **living checklist** for Bora, derived from [`PLAN.md`](PLAN.md) (the full d
       members cleaned up. *(UI buttons to be wired into the in-progress Chat.tsx redesign.)*
 - [ ] After each turn → write to **Xtrace** per-user scope (never shared)
 - [ ] `functions/_shared/memory.ts` two-tier helpers (exists) — wire into chat + meetings
-- [~] Context ingestion: `functions/ingest-source.ts` (admin-only) — **text path done + verified**:
+- [~] Context ingestion: `functions/ingest-source.ts` (admin-only) — **text + GitHub paths done**:
       paste text → ensure `org-{id}` collection → ingest → poll to `ready` → `context_sources` row
-      (`rag_doc_ids` stored). `Context.tsx` (`/org/:id/context`, linked from Org) lists sources +
-      add/remove. **Verified live**: admin add → member sees row (RLS) → chat grounds answer with
-      citation; non-admin add→403; URL path guarded→501. *(RocketRide URL/GitHub fetch is the
-      remaining branch — `ROCKETRIDE_APIKEY` is unset + needs a `.pipe` pipeline; guarded for now.)*
+      (`rag_doc_ids` stored). **GitHub path**: a `github.com/owner/repo` URL → fetch the repo README via
+      the Butterbase **GitHub integration** (`GITHUB_GET_A_REPOSITORY_README`, base64→UTF-8 decoded) →
+      ingest as a `github` source. `Context.tsx` lists sources + add-text + **add-repo** form.
+      **Verified live**: text add (admin→member sees row→chat grounds+cites; non-admin→403); GitHub URL
+      with no connection→**501 "connect GitHub first"**, non-GitHub URL→501 RocketRide. *(Full
+      repo→RAG→cited-answer pends an admin connecting GitHub in Settings — the connect path is live.)*
 - [~] Ingestion → write chunks to org RAG collection (store `rag_doc_ids`) + mark source `ready` —
       **done for text**. Key-facts → shared **Xtrace** still pending (needs `XTRACE_*` keys).
 - [ ] `check.ts` per RocketRide rules
-- [ ] **Verify:** add GitHub URL + website → pending→ready → ask question only answerable from source → cited answer
+- [~] **Verify:** add GitHub URL → ready → ask question only answerable from the repo → cited answer.
+      *(Code path live + guards verified; needs an admin to connect GitHub once to complete. Website
+      ingestion still pends RocketRide.)*
 - [ ] **Verify:** user A's private fact recalled for A but **never** for user B
 
 ---

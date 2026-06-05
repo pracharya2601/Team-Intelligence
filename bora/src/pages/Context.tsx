@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { callFn, select } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { OrgLayout } from "../components/OrgLayout";
+import { SkeletonList } from "../components/Skeleton";
 import type { ContextSource, OrgMember, Organization } from "../../shared/types";
 
 /**
@@ -15,9 +16,11 @@ export function ContextPage() {
   const { user } = useAuth();
   const [org, setOrg] = useState<Organization | null>(null);
   const [sources, setSources] = useState<ContextSource[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
+  const [repoUrl, setRepoUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -35,6 +38,8 @@ export function ContextPage() {
       setIsAdmin(mem.some((m) => m.role === "admin" && m.status === "active"));
     } catch (e: any) {
       setError(e?.message ?? "Failed to load knowledge");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -60,6 +65,27 @@ export function ContextPage() {
     } catch (err: any) {
       const msg = err?.message ?? "Failed to add";
       setError(/not found/i.test(msg) ? "The ingest-source function isn't deployed yet." : msg);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addRepo(e: React.FormEvent) {
+    e.preventDefault();
+    const u = repoUrl.trim();
+    if (!u || busy) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await callFn("ingest-source", { action: "add", org_id: id, url: u });
+      setRepoUrl("");
+      setNotice("Repository README added to the team knowledge base.");
+      await load();
+    } catch (err: any) {
+      const msg = err?.message ?? "Failed to add repository";
+      // The function returns a clear guidance message when GitHub isn't connected yet.
+      setError(msg);
     } finally {
       setBusy(false);
     }
@@ -92,9 +118,11 @@ export function ContextPage() {
       <section className="card col">
         <div className="row" style={{ justifyContent: "space-between" }}>
           <h3 style={{ margin: 0 }}>Sources</h3>
-          <span className="muted text-sm">{ready}/{sources.length} ready</span>
+          {!loading && <span className="muted text-sm">{ready}/{sources.length} ready</span>}
         </div>
-        {sources.length === 0 ? (
+        {loading ? (
+          <SkeletonList rows={3} />
+        ) : sources.length === 0 ? (
           <div className="empty">
             <span className="empty-icon">🗂️</span>
             <span>No knowledge yet</span>
@@ -124,8 +152,7 @@ export function ContextPage() {
         <form className="card col" onSubmit={add}>
           <div className="col" style={{ gap: 2 }}>
             <h3 style={{ margin: 0 }}>Add knowledge</h3>
-            <span className="muted text-sm">Paste notes, docs, or facts about your team or projects. Bora will use them in chat.
-              (URL & GitHub ingestion via RocketRide is coming.)</span>
+            <span className="muted text-sm">Paste notes, docs, or facts about your team or projects. Bora will use them in chat.</span>
           </div>
           <input
             placeholder="Title (e.g. Q2 Roadmap)"
@@ -142,6 +169,25 @@ export function ContextPage() {
           />
           <div className="row" style={{ justifyContent: "flex-end" }}>
             <button type="submit" disabled={busy || !text.trim()}>{busy ? "Adding…" : "Add to knowledge"}</button>
+          </div>
+        </form>
+      )}
+
+      {isAdmin && (
+        <form className="card col" onSubmit={addRepo}>
+          <div className="col" style={{ gap: 2 }}>
+            <h3 style={{ margin: 0 }}>Add a GitHub repository</h3>
+            <span className="muted text-sm">Paste a repo URL and Bora ingests its README into the knowledge base.
+              Requires GitHub to be connected in Settings (admins).</span>
+          </div>
+          <div className="row">
+            <input
+              placeholder="https://github.com/owner/repo"
+              value={repoUrl}
+              onChange={(e) => setRepoUrl(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <button type="submit" disabled={busy || !repoUrl.trim()}>{busy ? "Adding…" : "Add repo"}</button>
           </div>
         </form>
       )}
