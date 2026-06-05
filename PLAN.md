@@ -17,7 +17,9 @@ The user wants a multi-tenant **team meeting bot** ("Bora") that any organizatio
 - Chat API route + chat UI layout: [src/app/api/chat/route.ts](gmail-agent/src/app/api/chat/route.ts), [src/app/page.tsx](gmail-agent/src/app/page.tsx).
 - The OAuth/token-refresh idea in [src/lib/auth.ts](gmail-agent/src/lib/auth.ts) is informative only — **Butterbase handles auth + Gmail OAuth** for us.
 
-We create a **new app** `c:\Agent_bora\bora` (Next.js 15), leaving `gmail-agent` untouched. **Butterbase** is the backend and absorbs as much as possible (DB, auth/RLS, storage, functions, realtime, AI gateway, RAG, Gmail/GitHub integrations). The other six vendors each do one job: **RocketRide** fetch/parse context · **Xtrace** memory · **ElevenLabs** TTS · **Photon Spectrum** Slack presence · **Nebius** trigger model · **Recall.ai** meetings.
+We create a **new app** `c:\Agent_bora\bora`, leaving `gmail-agent` untouched. **Deploy model: a static React + Vite SPA hosted on Butterbase (Cloudflare Pages) + all server logic as Butterbase serverless functions** — no Next.js SSR, no Vercel. **Butterbase** is the backend and absorbs as much as possible (DB, auth/RLS, storage, **functions**, realtime, AI gateway, RAG, Gmail/GitHub integrations). The other six vendors each do one job: **RocketRide** fetch/parse context · **Xtrace** memory · **ElevenLabs** TTS · **Photon Spectrum** Slack presence · **Nebius** trigger model · **Recall.ai** meetings.
+
+> **Where code runs:** the SPA (browser) handles UI + auth + realtime WS + direct data/RAG reads. Everything server-side — Recall webhooks, the chat agent loop, the "should I speak" loop, `speak-trigger`, recap-token signing, recap email, RocketRide ingestion — is a **Butterbase function** (`http`/`cron`/`websocket` trigger), called from the SPA via `ANY /v1/{app_id}/fn/{name}`. The reusable libs in `bora/src/lib/` are bundled into those functions.
 
 > ⚠️ This is a large system. The plan is sequenced into 6 phases so each leaves something runnable. Even though the user chose "everything at once," we build bottom-up (backend+auth → meetings → proactive → chat/memory → Slack → recaps) so integration risk is contained.
 
