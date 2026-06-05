@@ -1,0 +1,10 @@
+{
+  "name": "bora-ui-skills",
+  "description": "Build consistent, enterprise-grade dashboard UI for Bora — the refined dark design system (tokens, component classes, dashboard layout patterns) defined in bora/src/index.css. Skills for the design foundation, component primitives, and page-level dashboard patterns.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Prakash Acharya"
+  },
+  "license": "MIT",
+  "keywords": ["bora", "design-system", "ui", "dashboard", "enterprise", "dark-theme", "css", "react", "vite"]
+}

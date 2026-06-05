@@ -7,6 +7,7 @@ import { HomePage } from "./pages/Home";
 import { OrgPage } from "./pages/Org";
 import { ChatPage } from "./pages/Chat";
 import { ContextPage } from "./pages/Context";
+import { SettingsPage } from "./pages/Settings";
 // Track A — Meetings & Voice
 import { MeetingsPage } from "./pages/Meetings";
 import { RecapPage } from "./pages/Recap";
@@ -33,6 +34,7 @@ export function App() {
         <Route path="/org/:id" element={<RequireAuth><OrgPage /></RequireAuth>} />
         <Route path="/org/:id/chat" element={<RequireAuth><ChatPage /></RequireAuth>} />
         <Route path="/org/:id/context" element={<RequireAuth><ContextPage /></RequireAuth>} />
+        <Route path="/org/:id/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
         {/* Track A — Meetings & Voice (org-scoped, matching the Chat pattern) */}
         <Route path="/org/:id/meetings" element={<RequireAuth><MeetingsPage /></RequireAuth>} />
         <Route path="/org/:id/meetings/:meetingId" element={<RequireAuth><RecapPage /></RequireAuth>} />

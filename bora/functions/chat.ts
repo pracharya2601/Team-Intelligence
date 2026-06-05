@@ -60,6 +60,17 @@ export default async function handler(req: Request, ctx: any): Promise<Response>
       return json({ error: { message: "Not a member of this organization" } }, 403);
     }
 
+    // Bot identity + persona (admin-configured in Settings) shapes the assistant's voice.
+    let botName = "Bora";
+    let persona = "";
+    try {
+      const bots: any[] = await svc(`/bots?org_id=eq.${org_id}`);
+      if (bots[0]?.name) botName = String(bots[0].name);
+      if (bots[0]?.persona) persona = String(bots[0].persona);
+    } catch {
+      /* fall back to defaults */
+    }
+
     // search_context — retrieve relevant org knowledge from the org's RAG collection.
     // RAG is best-effort: it must NEVER block a chat turn. The collection is per-org and private;
     // we query it with the service key only after the membership check above.
@@ -109,13 +120,14 @@ export default async function handler(req: Request, ctx: any): Promise<Response>
     );
 
     const system = [
-      "You are Bora, a helpful team assistant inside a private 1:1 chat with one user.",
+      `You are ${botName}, a helpful team assistant inside a private 1:1 chat with one user.`,
+      persona ? `Personality and behavior to embody: ${persona}` : "",
       "This conversation is private to this user. Never reveal, quote, or reference any other",
       "user's private chat, and never claim to have access to other people's private messages.",
       "You may use the organization's shared knowledge and meeting context. When team knowledge is",
       "provided below, ground your answer in it and cite the [n] sources you used; if it doesn't",
       "cover the question, say so rather than guessing. Be concise and direct.",
-    ].join(" ");
+    ].filter(Boolean).join(" ");
 
     const messages = [
       { role: "system", content: system },

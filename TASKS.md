@@ -75,9 +75,12 @@ The **living checklist** for Bora, derived from [`PLAN.md`](PLAN.md) (the full d
       active+user_id, idempotent second call→0. *(Used a client-called claim instead of a provider
       post-auth trigger — reliable, idempotent, no special trigger type needed.)*
 - [x] Role gating in UI (admin-only controls) + at the function (active-admin check)
-- [x] App shell sidebar nav — `components/OrgLayout.tsx` (sidebar: Members · Chat · Knowledge +
-      account/logout, active-route highlight). Members/Chat/Knowledge pages now render inside it
-      (per-page headers removed). *(Meetings · Settings nav slots added when those pages land.)*
+- [x] App shell sidebar nav — `components/OrgLayout.tsx` (sidebar: Members · Chat · Knowledge ·
+      Meetings · Settings + account/logout, active-route highlight). Members/Chat/Knowledge/Settings
+      render inside it; Meetings is Track A's page reachable from the same nav.
+- [x] Settings page — `pages/Settings.tsx` (`/org/:id/settings`) + `functions/org-settings.ts`
+      (admin-only): rename org, set **Bora's name + persona** (the `bots` row; persona shapes the
+      bot's voice in meetings + chat). **Verified live**: admin rename + persona persist; non-admin→403.
 - [ ] **Verify (browser):** admin invites member → member joins → role gating holds. Function paths
       verified via smoke; "member joins" needs the `on-auth` flip + a real browser pass.
 
@@ -86,9 +89,9 @@ The **living checklist** for Bora, derived from [`PLAN.md`](PLAN.md) (the full d
 > **self-contained** function (no `./_shared` imports — inline helpers) without MCP. Logs:
 > `GET /v1/{app}/functions/<name>/logs`. (MCP `manage_*` only works once it's connected to this app's account.)
 
-> ⚠️ **Known type issue (Phase 4, [B]):** `functions/_shared/memory.ts` doesn't match the
-> `@xtraceai/memory` SDK API (`group_ids`/`recall`/`groups`) → `tsc -b` fails, so `npm run build`
-> fails. `npx vite build` (the SPA bundle) works. Fix when wiring Xtrace memory in Phase 4.
+> ✅ **Build is green:** `npm run build` (`tsc -b && vite build`) passes — the earlier
+> `_shared/memory.ts` / `@xtraceai/memory` type mismatch no longer trips `tsc`. (Runtime Xtrace is
+> still unverified — `XTRACE_API_KEY`/`XTRACE_ORG_ID` are empty — but the types compile.)
 
 ---
 
@@ -157,10 +160,19 @@ The **living checklist** for Bora, derived from [`PLAN.md`](PLAN.md) (the full d
 
 - [ ] `functions/_shared/slack.ts` + `functions/slack-event.ts`: Spectrum Slack provider; on **tag** → run `runChatAgent` → `space.send(reply)` in thread
 - [ ] Map Slack `team_id`/user → org/bot via `bots.slack_team_id`; Slack uses **shared** team memory (never private)
-- [ ] `functions/recap-email.ts`: Gmail `GMAIL_SEND_EMAIL` → email org admins on meeting end (summary + decisions + actions + recap link)
+- [~] `functions/recap-email.ts` — reads meeting + `meeting_artifacts.ai_notes`, derives admin
+      recipients (org admins' emails; `to` override), formats an HTML recap (summary · decisions ·
+      actions · risks + link), sends via Gmail `GMAIL_SEND_EMAIL` (`/integrations/execute`) from a
+      connected admin's account. **Verified live up to the send**: recipients derived, reaches send,
+      **graceful no-op** when no Gmail connected; explicit `to` honored. ⛔ **live send pends a Gmail
+      connection** (Settings → Connect Gmail). Caller check: service/cron allowed; a user must be an
+      org member.
+- [x] **Connect Gmail** UI — `Settings.tsx` Gmail panel + `api.ts` `integrationConnect/Connections/
+      Disconnect`. Admin clicks Connect → `/integrations/connect` → Composio OAuth → back to Settings.
+      **Verified**: connect returns a real OAuth `authUrl`. *(Completing OAuth is a one-time manual step.)*
 - [ ] Cron `daily-recap` function: batch "today's meetings" digest
 - [ ] **Verify:** tag Bora in Slack → in-thread project-aware reply
-- [ ] **Verify:** end a meeting → admin inbox gets recap email with working link
+- [ ] **Verify:** end a meeting → admin inbox gets recap email *(needs a connected Gmail + Track A meeting-end calling recap-email — via `/functions/recap-email/invoke` with the service key, or a user JWT)*
 
 ---
 
