@@ -4,6 +4,11 @@
  * Private per-user chat with Bora. Persists chat_threads / chat_messages and answers with Claude
  * (off the live-meeting path — see model policy) through the Butterbase AI gateway.
  *
+ * Retrieval (both best-effort, never block a turn): `search_context` pulls relevant chunks from the
+ * org's private RAG collection, and `search_meetings` surfaces relevant recent meeting notes
+ * (summary / decisions / action items). Both are injected as system context with citations
+ * ([n] for knowledge, [Mn] for meetings).
+ *
  * PRIVACY (the core guarantee):
  *  - chat_threads / chat_messages are `user_id = caller` ONLY (RLS, Phase 0). This function runs
  *    with the service key (RLS bypassed), so it ENFORCES that invariant in code: every read and
@@ -94,6 +99,49 @@ export default async function handler(req: Request, ctx: any): Promise<Response>
       /* RAG unavailable / empty collection — answer without it */
     }
 
+    // search_meetings — surface relevant recent meeting notes (summary / decisions / action items)
+    // so the bot can answer "what did we decide?" / "what was discussed?". Best-effort: never blocks
+    // a chat turn. Ranked by keyword overlap with the question, then recency (falls back to pure
+    // recency for generic questions). Service-key reads, already gated by the membership check above.
+    let meetingContext = "";
+    try {
+      const meets: any[] = await svc(`/meetings?org_id=eq.${org_id}&status=eq.done&order=ended_at.desc&limit=8`);
+      const ids: string[] = meets.map((m) => m.id).filter(Boolean);
+      if (ids.length) {
+        const arts: any[] = await svc(`/meeting_artifacts?meeting_id=in.(${ids.join(",")})`);
+        const notesByMeeting = new Map<string, any>(arts.map((a) => [a.meeting_id, a.ai_notes || {}]));
+        const terms = content.toLowerCase().match(/[a-z0-9]{4,}/g) || [];
+        const asList = (a: any) => (Array.isArray(a) ? a.map((x) => String(x)) : []);
+        const cards = meets
+          .map((m) => {
+            const n = notesByMeeting.get(m.id) || {};
+            const summary = n.summary ? String(n.summary) : "";
+            const decisions = asList(n.decisions);
+            const actions = asList(n.action_items ?? n.actions);
+            if (!summary && !decisions.length && !actions.length) return null;
+            const when = m.ended_at ? String(m.ended_at).slice(0, 10) : "";
+            const blob = [summary, decisions.join(" "), actions.join(" ")].join(" ").toLowerCase();
+            const score = terms.reduce((s, t) => s + (blob.includes(t) ? 1 : 0), 0);
+            const text = [
+              `${when}${m.platform ? " " + m.platform : ""}: ${summary.slice(0, 400)}`.trim(),
+              decisions.length ? `Decisions: ${decisions.join("; ")}` : "",
+              actions.length ? `Action items: ${actions.join("; ")}` : "",
+            ].filter(Boolean).join(" ");
+            return { score, ended: String(m.ended_at || ""), text };
+          })
+          .filter(Boolean) as { score: number; ended: string; text: string }[];
+        cards.sort((a, b) => b.score - a.score || b.ended.localeCompare(a.ended));
+        const top = cards.slice(0, 6);
+        if (top.length) {
+          meetingContext =
+            "Recent team meetings (cite the [Mn] you used):\n" +
+            top.map((c, i) => `[M${i + 1}] ${c.text}`).join("\n");
+        }
+      }
+    } catch {
+      /* meetings unavailable / no notes yet — answer without them */
+    }
+
     // Resolve the thread — existing (must be the caller's) or new.
     let thread: any;
     if (body.thread_id) {
@@ -124,14 +172,15 @@ export default async function handler(req: Request, ctx: any): Promise<Response>
       persona ? `Personality and behavior to embody: ${persona}` : "",
       "This conversation is private to this user. Never reveal, quote, or reference any other",
       "user's private chat, and never claim to have access to other people's private messages.",
-      "You may use the organization's shared knowledge and meeting context. When team knowledge is",
-      "provided below, ground your answer in it and cite the [n] sources you used; if it doesn't",
-      "cover the question, say so rather than guessing. Be concise and direct.",
+      "You may use the organization's shared knowledge and recent meeting notes provided below.",
+      "Ground your answer in them and cite the sources you used — [n] for team knowledge, [Mn] for",
+      "meetings; if they don't cover the question, say so rather than guessing. Be concise and direct.",
     ].filter(Boolean).join(" ");
 
     const messages = [
       { role: "system", content: system },
       ...(context ? [{ role: "system", content: context }] : []),
+      ...(meetingContext ? [{ role: "system", content: meetingContext }] : []),
       ...history.map((m) => ({ role: m.role, content: m.content })),
     ];
 

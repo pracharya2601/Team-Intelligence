@@ -129,11 +129,15 @@ The **living checklist** for Bora, derived from [`PLAN.md`](PLAN.md) (the full d
 ## Phase 4 — Private chat + Xtrace two-tier memory + RocketRide ingestion  **[B]**
 
 - [ ] `functions/_shared/agent.ts`: agent loop on Butterbase gateway (Claude, OpenAI-compatible tool-calling)
-- [~] Agent tools: **`search_context` done** — `chat.ts` retrieves top org-collection chunks
-      (threshold 0.3) and injects them; Bora grounds + cites. **Verified live**: seeded an org fact,
-      asked a question only answerable from it → correct answer with citation. *(Remaining tools:
-      `recall_team_memory`/`recall_my_memory` (Xtrace), `search_meetings`, Gmail — and a formal
-      tool-calling loop; current RAG is inline retrieval, which is enough until those land.)*
+- [~] Agent tools: **`search_context` + `search_meetings` done** — `chat.ts` retrieves top
+      org-collection chunks (threshold 0.3) AND relevant recent meeting notes (summary / decisions /
+      action items, ranked by keyword overlap then recency), injecting both with citations ([n] for
+      knowledge, [Mn] for meetings). Both best-effort — never block a turn. **Verified live**:
+      (a) seeded an org fact → asked a question only answerable from it → correct answer + [n] citation;
+      (b) asked "what were our recent meetings about?" → bot grounded in both real meeting summaries
+      and cited [M1]/[M2] (throwaway active member; data cleaned up). *(Remaining tools:
+      `recall_team_memory`/`recall_my_memory` (Xtrace — blocked on keys), Gmail — and a formal
+      tool-calling loop; current retrieval is inline injection, which is enough until those land.)*
 - [x] System prompt **forbids** revealing another user's private chat (in `functions/chat.ts`)
 - [x] Chat UI `pages/Chat.tsx` + `functions/chat.ts`: persist `chat_threads`/`chat_messages` (RLS-private),
       reply via Claude (`claude-opus-4.8`, off-path) through the gateway. Deployed + **verified live**:
