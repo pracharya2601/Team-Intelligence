@@ -23,7 +23,7 @@
 // We correlate each event to our meeting via Recall bot metadata.meeting_id (set at createBot),
 // falling back to a lookup by recall_bot_id.
 
-import { getRecordingUrls, mapStatusToMeetingStatus, type RecallEnv } from "./_shared/recall.ts";
+import { getBot, getRecordingUrls, downloadTranscript, leaveBot, mapStatusToMeetingStatus, type RecallEnv, type TranscriptLine } from "./_shared/recall.ts";
 import { complete, type LlmEnv } from "./_shared/llm.ts";
 
 interface FnCtx {
@@ -83,6 +83,12 @@ async function route(evt: RecallEvent, ctx: FnCtx): Promise<void> {
 
   const type = evt.event;
 
+  // Auto-exit: when the last human leaves, the bot should leave too (don't sit in an empty call).
+  if (type.includes("participant_events") || type.includes("participant.")) {
+    await maybeAutoLeave(evt, ctx, botId);
+    return;
+  }
+
   // Real-time transcript events → append segments.
   if (type.startsWith("transcript.data") || type === "transcript.partial_data") {
     await insertTranscript(evt, ctx, meetingId);
@@ -109,6 +115,49 @@ async function route(evt: RecallEvent, ctx: FnCtx): Promise<void> {
     if (mapped) await setStatus(ctx, meetingId, mapped);
     return;
   }
+}
+
+// ── Auto-exit when everyone has left ─────────────────────────────────────────
+
+/**
+ * Rule: as soon as every human participant has left, make the bot leave too (so it never sits
+ * alone in an empty meeting running up cost). Triggered on participant-leave events.
+ *
+ * We read the live participant list from Recall and count NON-bot participants still present.
+ * If zero remain, call leave_call. Recall then emits call_ended → done, which finalizes the recap.
+ */
+async function maybeAutoLeave(evt: RecallEvent, ctx: FnCtx, botId: string): Promise<void> {
+  const action = (evt.data?.data as any)?.action ?? (evt.data as any)?.action ?? "";
+  // Only react to leaves (joins never empty the room).
+  if (action && !/leave|left|remove|disconnect/i.test(String(action))) return;
+
+  const recallEnv: RecallEnv = { RECALL_API_KEY: ctx.env.RECALL_API_KEY, RECALL_REGION: ctx.env.RECALL_REGION };
+  let humansPresent = countHumansFromEvent(evt);
+
+  // The event alone is often not authoritative — confirm against the live bot participant list.
+  try {
+    const bot: any = await getBot(recallEnv, botId);
+    const parts: any[] = bot?.recordings?.[0]?.participants ?? bot?.participants ?? [];
+    if (parts.length) {
+      humansPresent = parts.filter((p) => !p?.is_host_bot && !p?.is_bot && p?.platform !== "bot" && p?.status !== "left").length;
+    }
+  } catch (e) {
+    console.warn("recall-webhook: could not confirm participants, using event count", e instanceof Error ? e.message : e);
+  }
+
+  if (humansPresent <= 0) {
+    console.log("recall-webhook: everyone left → bot leaving call", botId);
+    await leaveBot(recallEnv, botId).catch((e) =>
+      console.warn("recall-webhook: leave_call failed", e instanceof Error ? e.message : e),
+    );
+  }
+}
+
+function countHumansFromEvent(evt: RecallEvent): number {
+  const d: any = evt.data?.data ?? evt.data ?? {};
+  const list: any[] = d.participants ?? d.active_participants ?? [];
+  if (!Array.isArray(list)) return 1; // unknown → assume someone's still there (don't leave prematurely)
+  return list.filter((p) => !p?.is_bot && p?.platform !== "bot").length;
 }
 
 // ── Handlers ───────────────────────────────────────────────────────────────────
@@ -148,7 +197,7 @@ async function insertTranscript(evt: RecallEvent, ctx: FnCtx, meetingId: string)
 async function finalizeMeeting(ctx: FnCtx, meetingId: string, botId: string): Promise<void> {
   const recallEnv: RecallEnv = { RECALL_API_KEY: ctx.env.RECALL_API_KEY, RECALL_REGION: ctx.env.RECALL_REGION };
 
-  // Fetch fresh signed media URLs (they expire — don't reuse later).
+  // Fetch fresh signed media URLs (they expire — don't reuse later). video + audio + transcript.
   let media = { videoUrl: null as string | null, audioUrl: null as string | null, transcriptUrl: null as string | null };
   try {
     media = await getRecordingUrls(recallEnv, botId);
@@ -158,10 +207,34 @@ async function finalizeMeeting(ctx: FnCtx, meetingId: string, botId: string): Pr
     throw e;
   }
 
-  // Generate AI notes from the stored transcript (off the live path → Claude via gateway).
+  // Download the full transcript JSON and persist it as transcript_segments. This is the reliable
+  // source for the recap (the real-time stream — Phase 3 — may not be wired). Idempotent: clear any
+  // existing rows for this meeting first so retries don't duplicate.
+  let lines: TranscriptLine[] = [];
+  if (media.transcriptUrl) {
+    try {
+      lines = await downloadTranscript(media.transcriptUrl);
+      if (lines.length) {
+        await ctx.db.query(`DELETE FROM transcript_segments WHERE meeting_id = $1`, [meetingId]);
+        for (const ln of lines) {
+          await ctx.db.query(
+            `INSERT INTO transcript_segments (meeting_id, speaker, text, ts_start, ts_end, is_final)
+             VALUES ($1, $2, $3, $4, $5, true)`,
+            [meetingId, ln.speaker, ln.text, ln.tsStart, ln.tsEnd],
+          );
+        }
+        console.log(`recall-webhook: stored ${lines.length} transcript segments for meeting`, meetingId);
+      }
+    } catch (e) {
+      console.warn("recall-webhook: transcript download/store failed (continuing)", e instanceof Error ? e.message : e);
+    }
+  }
+
+  // Generate AI notes from the transcript text (off the live path → Claude via gateway).
   let aiNotes: unknown = null;
   try {
-    aiNotes = await generateAiNotes(ctx, meetingId);
+    const transcriptText = lines.map((l) => `${l.speaker ?? "Speaker"}: ${l.text}`).join("\n").slice(0, 60_000);
+    if (transcriptText) aiNotes = await generateAiNotes(ctx, transcriptText);
   } catch (e) {
     console.warn("recall-webhook: AI notes failed (continuing)", e instanceof Error ? e.message : e);
   }
@@ -187,15 +260,8 @@ async function finalizeMeeting(ctx: FnCtx, meetingId: string, botId: string): Pr
   );
 }
 
-async function generateAiNotes(ctx: FnCtx, meetingId: string): Promise<unknown> {
-  const { rows } = await ctx.db.query(
-    `SELECT speaker, text FROM transcript_segments
-     WHERE meeting_id = $1 AND is_final = true ORDER BY ts_start NULLS LAST, created_at ASC`,
-    [meetingId],
-  );
-  if (!rows.length) return null;
-
-  const transcript = rows.map((r) => `${r.speaker ?? "Speaker"}: ${r.text}`).join("\n").slice(0, 60_000);
+async function generateAiNotes(ctx: FnCtx, transcript: string): Promise<unknown> {
+  if (!transcript.trim()) return null;
 
   const llmEnv: LlmEnv = {
     BUTTERBASE_API_URL: ctx.env.BUTTERBASE_API_URL,

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { select } from "../lib/api";
-import type { MeetingArtifacts, TranscriptSegment } from "../../shared/types";
+import { OrgLayout } from "../components/OrgLayout";
+import type { MeetingArtifacts, Organization, TranscriptSegment } from "../../shared/types";
 
 /**
  * Recap: the post-meeting page — embedded video + AI notes + full transcript.
@@ -18,7 +19,8 @@ type AiNotes = {
 };
 
 export function RecapPage() {
-  const { id: orgId, meetingId: id } = useParams<{ id: string; meetingId: string }>();
+  const { id: orgId = "", meetingId: id } = useParams<{ id: string; meetingId: string }>();
+  const [org, setOrg] = useState<Organization | null>(null);
   const [artifacts, setArtifacts] = useState<MeetingArtifacts | null>(null);
   const [segments, setSegments] = useState<TranscriptSegment[]>([]);
   const [error, setError] = useState("");
@@ -28,10 +30,12 @@ export function RecapPage() {
     if (!id) return;
     void (async () => {
       try {
-        const [arts, segs] = await Promise.all([
-          select<MeetingArtifacts>("meeting_artifacts", { meeting_id: id }),
-          select<TranscriptSegment>("transcript_segments", { meeting_id: id, is_final: true, order: "ts_start.asc" }),
+        const [orgs, arts, segs] = await Promise.all([
+          select<Organization>("organizations", { id: `eq.${orgId}` }),
+          select<MeetingArtifacts>("meeting_artifacts", { meeting_id: `eq.${id}` }),
+          select<TranscriptSegment>("transcript_segments", { meeting_id: `eq.${id}`, is_final: "is.true", order: "ts_start.asc" }),
         ]);
+        setOrg(orgs[0] ?? null);
         setArtifacts(arts[0] ?? null);
         setSegments(segs);
       } catch (e: any) {
@@ -40,17 +44,17 @@ export function RecapPage() {
         setLoading(false);
       }
     })();
-  }, [id]);
+  }, [id, orgId]);
 
   const notes = (artifacts?.ai_notes ?? null) as AiNotes | null;
 
   return (
-    <div className="container col">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <div className="brand" style={{ fontSize: 24 }}>Meeting recap</div>
-        <Link to={`/org/${orgId}/meetings`} className="muted">← Meetings</Link>
-      </div>
-
+    <OrgLayout
+      orgId={orgId}
+      orgName={org?.name}
+      title="Meeting recap"
+      actions={<Link to={`/org/${orgId}/meetings`} className="muted">← Meetings</Link>}
+    >
       {loading && <div className="muted">Loading…</div>}
       {error && <div className="error">{error}</div>}
       {!loading && !artifacts && <div className="muted">No recap yet — it appears after the meeting ends.</div>}
@@ -58,6 +62,13 @@ export function RecapPage() {
       {artifacts?.video_url && (
         <div className="panel">
           <video src={artifacts.video_url} controls style={{ width: "100%", borderRadius: 8 }} />
+        </div>
+      )}
+
+      {artifacts?.audio_url && (
+        <div className="panel col">
+          <h3 style={{ margin: 0 }}>Audio</h3>
+          <audio src={artifacts.audio_url} controls style={{ width: "100%" }} />
         </div>
       )}
 
@@ -91,7 +102,7 @@ export function RecapPage() {
           ))}
         </div>
       )}
-    </div>
+    </OrgLayout>
   );
 }
 

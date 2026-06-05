@@ -86,6 +86,11 @@ export async function createBot(env: RecallEnv, input: CreateBotInput): Promise<
   const recording_config: Record<string, unknown> = {
     // Recall.ai's own streaming transcript provider → real-time transcript webhooks.
     transcript: { provider: { recallai_streaming: {} } },
+    // Capture the full recording: mixed video AND mixed audio (so the recap has both).
+    video_mixed: {},
+    audio_mixed: {},
+    // Participant events → drives the auto-leave-when-empty rule (recall-webhook maybeAutoLeave).
+    participant_events: {},
   };
 
   // Point the bot's camera at our live status page (Output Media → webpage as video).
@@ -129,6 +134,49 @@ export async function getRecordingUrls(
     audioUrl: s?.audio_mixed?.data?.download_url ?? null,
     transcriptUrl: s?.transcript?.data?.download_url ?? null,
   };
+}
+
+/** Make the bot leave the call immediately. POST /bot/{id}/leave_call/ (no body). */
+export async function leaveBot(env: RecallEnv, botId: string): Promise<void> {
+  const res = await fetch(`${baseUrl(env)}/bot/${botId}/leave_call/`, { method: "POST", headers: authHeaders(env) });
+  if (!res.ok && res.status !== 404) {
+    // 404 = bot already gone; treat as success. Anything else, surface.
+    const t = await res.text().catch(() => "");
+    throw new Error(`Recall leave_call ${res.status}: ${t.slice(0, 140)}`);
+  }
+}
+
+/** One parsed transcript line. */
+export interface TranscriptLine {
+  speaker: string | null;
+  text: string;
+  tsStart: number | null;
+  tsEnd: number | null;
+}
+
+/**
+ * Download + parse the diarized transcript JSON from a signed transcript_url.
+ * Recall's schema: array of { participant:{name}, words:[{text,start_timestamp:{relative},end_timestamp:{relative}}] }.
+ * Each array element becomes one line (speaker + concatenated words + span).
+ */
+export async function downloadTranscript(transcriptUrl: string): Promise<TranscriptLine[]> {
+  const res = await fetch(transcriptUrl);
+  if (!res.ok) throw new Error(`transcript download ${res.status}`);
+  const data: any = await res.json();
+  const segments: any[] = Array.isArray(data) ? data : data?.segments ?? [];
+  const lines: TranscriptLine[] = [];
+  for (const seg of segments) {
+    const words: any[] = seg?.words ?? [];
+    const text = words.map((w) => w?.text ?? "").join(" ").replace(/\s+/g, " ").trim();
+    if (!text) continue;
+    lines.push({
+      speaker: seg?.participant?.name ?? seg?.speaker ?? null,
+      text,
+      tsStart: words[0]?.start_timestamp?.relative ?? null,
+      tsEnd: words[words.length - 1]?.end_timestamp?.relative ?? null,
+    });
+  }
+  return lines;
 }
 
 /** Map a Recall bot status code → our meetings.status enum. */
