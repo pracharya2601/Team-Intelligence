@@ -170,7 +170,21 @@ The **living checklist** for Bora, derived from [`PLAN.md`](PLAN.md) (the full d
 - [x] **Connect Gmail** UI — `Settings.tsx` Gmail panel + `api.ts` `integrationConnect/Connections/
       Disconnect`. Admin clicks Connect → `/integrations/connect` → Composio OAuth → back to Settings.
       **Verified**: connect returns a real OAuth `authUrl`. *(Completing OAuth is a one-time manual step.)*
-- [ ] Cron `daily-recap` function: batch "today's meetings" digest
+- [x] Cron `daily-recap` function: batch digest of meetings completed in the trailing window (default
+      24h), one email per org to active admins, sent via Gmail `GMAIL_SEND_EMAIL`. Deployed as a
+      **cron trigger** (`0 16 * * *` UTC) via `deploy-fn.mjs` (now supports `cron "<schedule>"`).
+      **Verified live**: against real data it grouped the org's 2 completed meetings, pulled each
+      `ai_notes`, and rendered both summaries into the digest (empty Decisions/Actions correctly
+      omitted); `to` override + `dry_run` + empty-window note all work. Graceful no-op when no Gmail
+      connected. Same send gate as `recap-email` (needs a connected Gmail to actually deliver).
+- [x] **Recap recipient fix (root cause):** `org-create` now stores the **creator's email** (decoded
+      from the verified JWT, never the body) as `invited_email` on their admin row — the creator joins
+      without an invite, so this was the one place it was missing. Without it, both `recap-email` and
+      `daily-recap` derived **0** admin recipients. **Verified live**: throwaway signup → org-create →
+      admin row carries `invited_email` → daily-recap derives that recipient (no override) → digest
+      renders; all test data cleaned up. *(Pre-existing orgs created before this fix still lack the
+      creator email — only new orgs are covered.)* `org-create` also now accepts the service key from
+      `BORA_SERVICE_KEY` **or** `BUTTERBASE_API_KEY` so it deploys via the standard `deploy-fn.mjs`.
 - [ ] **Verify:** tag Bora in Slack → in-thread project-aware reply
 - [ ] **Verify:** end a meeting → admin inbox gets recap email *(needs a connected Gmail + Track A meeting-end calling recap-email — via `/functions/recap-email/invoke` with the service key, or a user JWT)*
 

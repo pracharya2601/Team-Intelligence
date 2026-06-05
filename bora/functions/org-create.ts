@@ -29,8 +29,16 @@ export async function handler(req, ctx) {
   const userId = ctx.user.id;
   const API = ctx.env.BUTTERBASE_API_URL; // auto-injected
   const APP = ctx.env.BUTTERBASE_APP_ID; // auto-injected
-  const KEY = ctx.env.BORA_SERVICE_KEY; // supplied via envVars (bb_sk)
-  if (!KEY) return json({ error: { message: "Server misconfigured: BORA_SERVICE_KEY not set" } }, 500);
+  // Either env name carries the bb_sk service key: BORA_SERVICE_KEY (original deploy) or
+  // BUTTERBASE_API_KEY (injected by scripts/deploy-fn.mjs). Same key — accept whichever is set.
+  const KEY = ctx.env.BORA_SERVICE_KEY || ctx.env.BUTTERBASE_API_KEY;
+  if (!KEY) return json({ error: { message: "Server misconfigured: service key not set" } }, 500);
+
+  // Creator's email from the VERIFIED identity (JWT claim), never the body. Stored on their admin
+  // member row as invited_email so post-meeting recap emails (recap-email / daily-recap) can reach
+  // the creator — org-create is the only path that seats a member without an invite, so it's the
+  // one place that must fill this in. Empty string if absent (older tokens) → column stays null.
+  const creatorEmail = String((ctx.user && ctx.user.email) || emailFromJwt(req)).trim().toLowerCase();
 
   const svc = (path, payload) =>
     fetch(`${API}/v1/${APP}/${path}`, {
@@ -47,7 +55,9 @@ export async function handler(req, ctx) {
   try {
     const org = await svc("organizations", { name, created_by: userId });
     const orgRow = Array.isArray(org) ? org[0] : org;
-    const member = await svc("org_members", { org_id: orgRow.id, user_id: userId, role: "admin", status: "active" });
+    const memberRow = { org_id: orgRow.id, user_id: userId, role: "admin", status: "active" };
+    if (creatorEmail && creatorEmail.includes("@")) memberRow.invited_email = creatorEmail;
+    const member = await svc("org_members", memberRow);
     const bot = await svc("bots", { org_id: orgRow.id, name: "Bora" });
     return json({ org: orgRow, member, bot }, 201);
   } catch (e) {
@@ -57,4 +67,22 @@ export async function handler(req, ctx) {
 
 function json(b, status) {
   return new Response(JSON.stringify(b), { status: status || 200, headers: { "Content-Type": "application/json" } });
+}
+
+// Decode the email claim from the verified Bearer JWT (auth:required already verified the token,
+// so trusting its claims is safe). Same approach as claim-invites — never read email from the body.
+function emailFromJwt(req) {
+  const auth = req.headers.get("authorization") || "";
+  const m = auth.match(/^Bearer\s+(.+)$/i);
+  if (!m) return "";
+  const parts = m[1].split(".");
+  if (parts.length < 2) return "";
+  try {
+    const seg = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const pad = seg.length % 4 ? "=".repeat(4 - (seg.length % 4)) : "";
+    const payload = JSON.parse(atob(seg + pad));
+    return String(payload.email || (payload.user_metadata && payload.user_metadata.email) || "");
+  } catch {
+    return "";
+  }
 }

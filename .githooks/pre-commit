@@ -29,7 +29,7 @@ owner_of() {
     bora/src/pages/Meeting*|bora/src/pages/Bot*|bora/src/pages/Recap.tsx)     echo A;;
     # ── Track B — Org / Chat / Knowledge ──
     bora/functions/org-*|bora/functions/claim-invites.ts|bora/functions/chat.ts|bora/functions/ingest-*) echo B;;
-    bora/functions/slack-*|bora/functions/recap-*)                            echo B;;
+    bora/functions/slack-*|bora/functions/recap-*|bora/functions/daily-recap*) echo B;;
     bora/functions/_shared/agent.ts|bora/functions/_shared/memory.ts|bora/functions/_shared/slack.ts) echo B;;
     bora/src/lib/auth.tsx)                                                    echo B;;
     bora/src/pages/Login.tsx|bora/src/pages/AuthCallback.tsx|bora/src/pages/Home.tsx) echo B;;

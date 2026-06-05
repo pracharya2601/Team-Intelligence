@@ -4,6 +4,9 @@
  *   node scripts/deploy-fn.mjs <file> <name> [method] [auth]
  *   node scripts/deploy-fn.mjs functions/org-members.ts org-members POST required
  *
+ * Cron trigger (pass "cron" as <method>; <auth> slot becomes the schedule):
+ *   node scripts/deploy-fn.mjs functions/daily-recap.ts daily-recap cron "0 16 * * *"
+ *
  * Reads BUTTERBASE_* from .env.local. The function file must be SELF-CONTAINED
  * (no local `./_shared` imports) — this sends a single code blob; relative imports
  * won't resolve. Inline what you need. Supplies BUTTERBASE_API_KEY/URL/APP_ID as envVars.
@@ -42,11 +45,22 @@ if (!APP || !KEY) {
 }
 
 const code = readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
+// `cron` as the <method> arg switches to a scheduled trigger; the <auth> slot carries the
+// 5-field cron expression (default daily 16:00 UTC). Otherwise it's a normal HTTP trigger.
+const trigger =
+  method === "cron"
+    ? { type: "cron", config: { schedule: auth && auth !== "required" ? auth : "0 16 * * *", timezone: "UTC" } }
+    : { type: "http", config: { method, auth } };
 const payload = {
   name,
   code,
-  trigger: { type: "http", config: { method, auth } },
-  envVars: { BUTTERBASE_API_KEY: KEY, BUTTERBASE_API_URL: BASE, BUTTERBASE_APP_ID: APP },
+  trigger,
+  envVars: {
+    BUTTERBASE_API_KEY: KEY,
+    BUTTERBASE_API_URL: BASE,
+    BUTTERBASE_APP_ID: APP,
+    APP_BASE_URL: process.env.APP_BASE_URL ?? "",
+  },
 };
 
 const res = await fetch(`${BASE}/v1/${APP}/functions`, {
