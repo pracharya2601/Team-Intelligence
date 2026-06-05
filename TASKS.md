@@ -26,7 +26,7 @@ The **living checklist** for Bora, derived from [`PLAN.md`](PLAN.md) (the full d
 
 **Remaining — Lane 1: Local & Verify  [A+B, service key only]**
 - [ ] Fix `scripts/check.ts` — repoint to `functions/_shared/{bb,llm}`, adapt to `complete(env, opts)`
-- [ ] Fix `.env.example` — add `VITE_BUTTERBASE_APP_ID`/`VITE_BUTTERBASE_API_BASE`, drop `NEXT_PUBLIC_*`, port 5173
+- [x] Fix `.env.example` — `VITE_*` vars added, `NEXT_PUBLIC_*` dropped, port 5173, placeholders only (real keys → `.env.local`)
 - [ ] `npm install` → `.env.local` with key → `npm run check` green → `npm run dev` boots
 - [ ] Extend `check.ts` to the **§0.9 verifier**: RAG ingest→poll→query round-trip
 - [ ] **Two-user RLS proof**: member B can't read member A's chat; non-admin can't insert `context_source`
