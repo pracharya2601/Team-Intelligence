@@ -28,9 +28,17 @@ The **living checklist** for Bora, derived from [`PLAN.md`](PLAN.md) (the full d
 - [x] Fix `scripts/check.ts` — now standalone (loads `.env.local`), uses `functions/_shared/{bb,llm}`, soft-warns on RAG
 - [x] Fix `.env.example` — `VITE_*` vars added, `NEXT_PUBLIC_*` dropped, port 5173, placeholders only (real keys → `.env.local`)
 - [x] `npm install` → `.env.local` key set → `npm run check` green (data API + both models) → `npm run dev` boots (SPA serves 200)
-- [ ] Extend `check.ts` to the **§0.9 verifier**: RAG ingest→poll→query round-trip
-- [ ] **Two-user RLS proof**: member B can't read member A's chat; non-admin can't insert `context_source`
+- [x] **Auth round-trip verified**: signup → login returns a valid JWT (email/password; works pre-verification)
+- [x] **org-create verified deployed + working**: creates org + admin member + bot (direct SQL)
+- [x] **RLS org-scoping proven**: user A sees their org; non-member B sees nothing
+- [ ] Finish two-user RLS proof: B can't read A's **chat** rows; non-admin can't insert `context_source`
+- [ ] RAG round-trip (⛔ blocked — see Phase 4 RAG-route note below)
 - [ ] Smoke **Xtrace** connectivity once `XTRACE_API_KEY`/`XTRACE_ORG_ID` exist
+
+> ⚠️ **RAG route finding (Phase 4, [B]):** data-plane `POST /rag/collections` and
+> `POST /rag/{c}/documents` both **404**. `org-create`'s RAG-collection step silently no-ops, so
+> no per-org collection is created. Ingestion must use MCP `manage_rag_content` or a function-runtime
+> RAG API — confirm before building `ingest-source`.
 
 **Remaining — Lane 2: Backend deploy & Auth  [needs Butterbase account / MCP]**
 - [ ] Deploy `org-create` function (creates per-org RAG `shared` collection + Xtrace group + bot + admin member)
