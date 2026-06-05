@@ -1,0 +1,42 @@
+# CODEOWNERS — PR-level lane lock (backstop to the local pre-commit hook).
+# Only enforced if the repo enables: Settings → Branches → branch protection →
+# "Require review from Code Owners". Replace the placeholder handles below.
+#
+#   @person-a  → Track A owner (Meetings & Voice)
+#   @person-b  → Track B owner (Org / Chat / Knowledge)
+#   @pracharya2601 → foundation/docs reviewer (adjust as you like)
+
+# ── Track A — Meetings & Voice ──
+/bora/functions/recall-*           @person-a
+/bora/functions/speak-*            @person-a
+/bora/functions/trigger.ts         @person-a
+/bora/functions/_shared/recall.ts  @person-a
+/bora/functions/_shared/escalate.ts @person-a
+/bora/src/pages/Meeting*           @person-a
+/bora/src/pages/Bot*               @person-a
+/bora/src/pages/Recap.tsx          @person-a
+
+# ── Track B — Org / Chat / Knowledge ──
+/bora/functions/org-*              @person-b
+/bora/functions/chat.ts            @person-b
+/bora/functions/ingest-*           @person-b
+/bora/functions/slack-*            @person-b
+/bora/functions/recap-*            @person-b
+/bora/functions/_shared/agent.ts   @person-b
+/bora/functions/_shared/memory.ts  @person-b
+/bora/functions/_shared/slack.ts   @person-b
+/bora/src/lib/auth.tsx             @person-b
+/bora/src/pages/Login.tsx          @person-b
+/bora/src/pages/AuthCallback.tsx   @person-b
+/bora/src/pages/Home.tsx           @person-b
+/bora/src/pages/Org*               @person-b
+/bora/src/pages/Members.tsx        @person-b
+/bora/src/pages/Chat.tsx           @person-b
+/bora/src/pages/Context.tsx        @person-b
+
+# ── Foundation / contracts — require the shared reviewer ──
+/bora/shared/                      @pracharya2601
+/bora/functions/_shared/bb.ts      @pracharya2601
+/bora/functions/_shared/llm.ts     @pracharya2601
+/bora/src/lib/api.ts               @pracharya2601
+/bora/src/App.tsx                  @pracharya2601

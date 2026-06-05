@@ -2,6 +2,9 @@
 .env
 .env.local
 
+# Lane lock (per-machine; each dev sets via scripts/setup-lane.sh)
+.lane
+
 # Planning / project docs (not part of the skills work)
 BUILD-PLAN.md
 SPONSORS.md

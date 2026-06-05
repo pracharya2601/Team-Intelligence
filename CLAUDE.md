@@ -96,6 +96,10 @@ OpenAI-compatible). **No Anthropic/Gemini keys.** Only Nebius is hosted/keyed se
   when it's done *and verified*, and add new tasks as they surface. PLAN.md = design, WORK-SPLIT.md =
   strategy, **TASKS.md = current state.**
 
+- **Lane lock — run once per clone:** `bash scripts/setup-lane.sh A` (or `B`). This enables a
+  pre-commit hook that **blocks you from committing the other lane's files**. Ownership map +
+  the rule (claim your task, don't touch the other lane) live in [`OWNERSHIP.md`](OWNERSHIP.md).
+
 We split the build across two tracks that own disjoint files. **See [`WORK-SPLIT.md`](WORK-SPLIT.md)
 for who owns what and the merge plan.** The Phase 0 shared foundation (Vite SPA scaffold,
 `shared/types.ts`, `functions/_shared/*`, `src/lib/api.ts`, `.env.example`, and the live Butterbase

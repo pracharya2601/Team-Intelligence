@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Bora lane lock — prevents one person from committing files owned by the OTHER lane.
+# Each dev declares their lane once:  bash scripts/setup-lane.sh A   (or B)
+#   A = Track A "Meetings & Voice"     B = Track B "Org/Chat/Knowledge"
+# Files not owned by either lane (foundation/docs/shared) are editable by anyone.
+# Emergency override (use only with the other owner's OK):  git commit --no-verify
+# Ownership map of record: OWNERSHIP.md  (keep the globs below in sync with it).
+set -euo pipefail
+
+lane_file=".lane"
+if [ ! -f "$lane_file" ]; then
+  echo "✋ Lane lock: no .lane file found."
+  echo "   Set yours once:  bash scripts/setup-lane.sh A   (Meetings & Voice)"
+  echo "                or:  bash scripts/setup-lane.sh B   (Org/Chat/Knowledge)"
+  exit 1
+fi
+LANE=$(tr -d '[:space:]' < "$lane_file")
+if [ "$LANE" != "A" ] && [ "$LANE" != "B" ]; then
+  echo "✋ Lane lock: .lane must contain 'A' or 'B' (got '$LANE'). Re-run scripts/setup-lane.sh."
+  exit 1
+fi
+
+# Returns the owning lane of a path: "A", "B", or "" (shared/foundation/unknown → anyone).
+owner_of() {
+  case "$1" in
+    # ── Track A — Meetings & Voice ──
+    bora/functions/recall-*|bora/functions/speak-*|bora/functions/trigger.ts) echo A;;
+    bora/functions/_shared/recall.ts|bora/functions/_shared/escalate.ts)     echo A;;
+    bora/src/pages/Meeting*|bora/src/pages/Bot*|bora/src/pages/Recap.tsx)     echo A;;
+    # ── Track B — Org / Chat / Knowledge ──
+    bora/functions/org-*|bora/functions/chat.ts|bora/functions/ingest-*)      echo B;;
+    bora/functions/slack-*|bora/functions/recap-*)                            echo B;;
+    bora/functions/_shared/agent.ts|bora/functions/_shared/memory.ts|bora/functions/_shared/slack.ts) echo B;;
+    bora/src/lib/auth.tsx)                                                    echo B;;
+    bora/src/pages/Login.tsx|bora/src/pages/AuthCallback.tsx|bora/src/pages/Home.tsx) echo B;;
+    bora/src/pages/Org*|bora/src/pages/Members.tsx|bora/src/pages/Chat.tsx|bora/src/pages/Context.tsx) echo B;;
+    # ── everything else (App.tsx route table, shared/, _shared/{bb,llm}, api.ts, docs, config) ──
+    *) echo "";;
+  esac
+}
+
+violations=""
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  o=$(owner_of "$f")
+  if [ -n "$o" ] && [ "$o" != "$LANE" ]; then
+    violations="${violations}  ✗ $f  (owned by lane $o, you are lane $LANE)\n"
+  fi
+done < <(git diff --cached --name-only --diff-filter=ACMR)
+
+if [ -n "$violations" ]; then
+  echo "⛔ Lane lock blocked this commit — you (lane $LANE) staged files owned by the other lane:"
+  printf "%b" "$violations"
+  echo "   These belong to the other person's tasks. Unstage them, or have the owner do it."
+  echo "   Shared/foundation files (App.tsx, shared/, _shared/{bb,llm}, api.ts, docs) are always allowed."
+  echo "   Genuine cross-lane change agreed with the owner?  git commit --no-verify"
+  exit 1
+fi
+exit 0
