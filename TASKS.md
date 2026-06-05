@@ -53,14 +53,20 @@ The **living checklist** for Bora, derived from [`PLAN.md`](PLAN.md) (the full d
 
 ## Phase 1 — Org/Admin console + auth UI  **[B]**
 
-- [ ] Auth pages: login/signup via Butterbase (`pages/Login.tsx`, `pages/AuthCallback.tsx` exist — finish)
-- [ ] Google sign-in button → `/auth/{app}/oauth/google?redirect_to=…`; callback stores tokens *(after OAuth #9)*
-- [ ] Create-organization flow (creator → `org_members` admin) — `org-create` function
-- [ ] **Invite by Gmail** (admin only): insert `org_members` `status=invited`; flip to `active` on first matching Google login
-- [ ] Promote-to-admin / member management (admin only)
-- [ ] App shell nav + router in `App.tsx`: Chat · Meetings · Context · Members · (admin) Settings
-- [ ] Role gating in **UI and at the API** (RLS) — members can't add context / call the bot
-- [ ] **Verify:** admin creates org → invites member → member joins → role gating holds in UI + API
+- [x] Auth pages: login/signup via Butterbase (`Login.tsx`/`AuthCallback.tsx`) — verified working
+- [ ] Google sign-in button → `/auth/{app}/oauth/google?redirect_to=…` *(wired in UI; needs OAuth creds #9 to work)*
+- [x] Create-organization flow (creator → admin) — `org-create` deployed + verified
+- [x] Org console UI built: `pages/Org.tsx` (`/org/:id`) — members table (RLS read) + invite + role + remove; Home links to it
+- [x] `functions/org-members.ts` written (admin-checked invite / set_role / remove)
+- 🔄 **Deploy `org-members`** so invite/role/remove work (writes RLS-blocked for users) — needs BB account
+- [ ] Flip invited→active on first login matching `invited_email` (post-auth hook function `on-auth`)
+- [x] Role gating in UI (admin-only controls) + at the function (active-admin check)
+- [ ] App shell sidebar nav (Chat · Meetings · Context · Members · Settings) — currently per-page headers only
+- [ ] **Verify:** admin invites member → member joins → role gating holds (blocked on `org-members` deploy)
+
+> ⚠️ **Known type issue (Phase 4, [B]):** `functions/_shared/memory.ts` doesn't match the
+> `@xtraceai/memory` SDK API (`group_ids`/`recall`/`groups`) → `tsc -b` fails, so `npm run build`
+> fails. `npx vite build` (the SPA bundle) works. Fix when wiring Xtrace memory in Phase 4.
 
 ---
 

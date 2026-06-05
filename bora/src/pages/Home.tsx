@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { callFn, logout as apiLogout, select } from "../lib/api";
+import { Link } from "react-router-dom";
+import { callFn, select } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import type { Organization } from "../../shared/types";
 
@@ -56,10 +57,15 @@ export function HomePage() {
         <h3 style={{ margin: 0 }}>Your organizations</h3>
         {orgs.length === 0 && <div className="muted">No organizations yet — create one below.</div>}
         {orgs.map((o) => (
-          <div key={o.id} className="row" style={{ justifyContent: "space-between" }}>
-            <span>{o.name}</span>
+          <Link
+            key={o.id}
+            to={`/org/${o.id}`}
+            className="row"
+            style={{ justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 10, color: "var(--text)" }}
+          >
+            <span>{o.name} →</span>
             <span className="muted">{new Date(o.created_at).toLocaleDateString()}</span>
-          </div>
+          </Link>
         ))}
       </div>
 
