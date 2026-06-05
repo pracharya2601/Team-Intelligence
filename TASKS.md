@@ -32,13 +32,21 @@ The **living checklist** for Bora, derived from [`PLAN.md`](PLAN.md) (the full d
 - [x] **org-create verified deployed + working**: creates org + admin member + bot (direct SQL)
 - [x] **RLS org-scoping proven**: user A sees their org; non-member B sees nothing
 - [ ] Finish two-user RLS proof: B can't read A's **chat** rows; non-admin can't insert `context_source`
-- [ ] RAG round-trip (⛔ blocked — see Phase 4 RAG-route note below)
+- [x] RAG round-trip **resolved + verified** — `scripts/rag-smoke.mjs` (create→ingest→ready→query→
+      synthesized answer→delete, all green). Correct routes encoded in `functions/_shared/bb.ts`.
 - [ ] Smoke **Xtrace** connectivity once `XTRACE_API_KEY`/`XTRACE_ORG_ID` exist
 
-> ⚠️ **RAG route finding (Phase 4, [B]):** data-plane `POST /rag/collections` and
-> `POST /rag/{c}/documents` both **404**. `org-create`'s RAG-collection step silently no-ops, so
-> no per-org collection is created. Ingestion must use MCP `manage_rag_content` or a function-runtime
-> RAG API — confirm before building `ingest-source`.
+> ✅ **RAG routes RESOLVED (Phase 4, [B]):** the working data-plane routes (service key) are
+> `…/rag/collections` (create/list), `…/rag/collections/{NAME}` (get/delete),
+> `…/rag/collections/{NAME}/ingest` (→202 `{documentId,status}`),
+> `…/rag/collections/{NAME}/documents[/{id}]` (list/status), `…/rag/collections/{NAME}/query`
+> (→`{chunks:[{content,score,document}],answer?}`). The old 404s were the wrong shape
+> (`/rag/{c}/documents`, and using the collection *id* where the param is the *name*). Encoded in
+> `functions/_shared/bb.ts` (`ragEnsureCollection`/`ragIngest`/`ragQuery`); proven by
+> `scripts/rag-smoke.mjs`. **All RAG access is service-key, membership-gated by the function** —
+> end users never hit `/rag` directly for org collections. `ingest-source` is now unblocked.
+> *(Note: `org-create`'s collection step can now ensure-create `org-{id}`; or ingest does it lazily
+> via `ragEnsureCollection`.)*
 
 **Remaining — Lane 2: Backend deploy & Auth  [needs Butterbase account / MCP]**
 - [ ] Deploy `org-create` function (creates per-org RAG `shared` collection + Xtrace group + bot + admin member)

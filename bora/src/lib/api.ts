@@ -88,13 +88,18 @@ export async function select<T = any>(table: string, query: Record<string, strin
   return asJson<T[]>(res);
 }
 
+/**
+ * Direct RAG query as the user (only works for `shared`/public collections). Org knowledge is
+ * `private` and queried server-side by the chat function (membership-gated), so the app rarely
+ * calls this — kept for shared/public collections. Route param is the collection NAME.
+ */
 export async function ragQuery(collection: string, query: string, opts: { top_k?: number; synthesize?: boolean } = {}) {
-  const res = await fetch(`${appUrl}/rag/${collection}/query`, {
+  const res = await fetch(`${appUrl}/rag/collections/${encodeURIComponent(collection)}/query`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ query, ...opts }),
   });
-  return asJson<{ answer?: string; chunks: Array<{ text: string; score: number }> }>(res);
+  return asJson<{ answer?: string; chunks: Array<{ content: string; score: number }> }>(res);
 }
 
 /**
