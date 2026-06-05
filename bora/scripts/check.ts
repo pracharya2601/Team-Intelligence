@@ -1,83 +1,71 @@
 /**
- * Phase 0 sanity check.
+ * Quick setup check — confirms the Butterbase backend is reachable and the gateway works.
  *
- * Verifies the Butterbase backend is reachable and the pieces Bora depends on work:
- *   1. Data API responds (tables exist).
- *   2. AI gateway returns a completion for BOTH the chat (Claude) and meeting (Gemini) models.
- *   3. RAG round-trips (ingest a tiny doc → query it).
+ * Run: npm run check   (requires bora/.env with BUTTERBASE_API_KEY)
  *
- * Run: npm run check   (requires .env.local with BUTTERBASE_* keys)
+ * For the full Phase 0 verification (schema, RLS prerequisite, RAG embedding, OAuth, …) run the
+ * test suite instead: `npm test` → tests/phase0.test.ts. This file is the fast smoke test.
  *
- * This does NOT exercise Recall/Xtrace/ElevenLabs/Nebius/Photon — those need their own
- * credentials and live services; they get their own checks as later phases land.
+ * (Repointed off the old Next.js src/lib/{bb,llm} imports — those were removed when the app
+ *  moved to the Vite SPA + functions model.)
  */
 
-import { appUrl } from "../src/lib/bb";
-import { complete } from "../src/lib/llm";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
-const KEY = process.env.BUTTERBASE_API_KEY;
+const here = dirname(fileURLToPath(import.meta.url));
+try {
+  const raw = readFileSync(join(here, "..", ".env"), "utf8");
+  for (const line of raw.split("\n")) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
+  }
+} catch {
+  /* no .env */
+}
 
-function ok(msg: string) {
-  console.log(`  ✓ ${msg}`);
-}
-function fail(msg: string, err?: unknown): never {
-  console.error(`  ✗ ${msg}`);
-  if (err) console.error("    ", err instanceof Error ? err.message : err);
-  process.exit(1);
-}
+const APP_ID = process.env.BUTTERBASE_APP_ID ?? "app_91v2kzy0pe03";
+const API_BASE = process.env.BUTTERBASE_API_BASE ?? "https://api.butterbase.ai";
+const KEY = process.env.BUTTERBASE_API_KEY ?? "";
+const appUrl = `${API_BASE}/v1/${APP_ID}`;
 
 async function main() {
-  console.log("Bora Phase 0 check\n");
-
-  if (!KEY) fail("BUTTERBASE_API_KEY is not set — copy .env.example to .env.local and fill it in.");
-
-  // 1. Data API reachable
-  console.log("Butterbase data API:");
-  try {
-    const res = await fetch(`${appUrl}/organizations?limit=1`, {
-      headers: { Authorization: `Bearer ${KEY}` },
-    });
-    if (!res.ok) fail(`GET /organizations returned ${res.status}`);
-    ok("organizations table reachable");
-  } catch (e) {
-    fail("could not reach the data API", e);
+  console.log("Bora setup check\n");
+  if (!KEY.startsWith("bb_sk_")) {
+    console.error("  ✗ BUTTERBASE_API_KEY (bb_sk_...) not set — copy .env.example to .env and fill it in.");
+    process.exit(1);
   }
 
-  // 2. AI gateway — both models
-  console.log("\nAI gateway (Butterbase):");
-  for (const surface of ["chat", "meeting"] as const) {
-    try {
-      const r = await complete({
-        surface,
-        messages: [{ role: "user", content: "Reply with exactly the word: ok" }],
-        maxTokens: 5,
-      });
-      const text = r.message.content?.toLowerCase() ?? "";
-      if (!text.includes("ok")) fail(`${surface} model replied unexpectedly: "${r.message.content}"`);
-      ok(`${surface} model (${surface === "meeting" ? "Gemini Flash" : "Claude"}) responded`);
-    } catch (e) {
-      fail(`${surface} completion failed`, e);
-    }
+  // 1. Data API
+  const data = await fetch(`${appUrl}/organizations?limit=1`, { headers: { Authorization: `Bearer ${KEY}` } });
+  if (!data.ok) {
+    console.error(`  ✗ data API GET /organizations → ${data.status}`);
+    process.exit(1);
   }
+  console.log("  ✓ Butterbase data API reachable");
 
-  // 3. RAG round-trip
-  console.log("\nRAG (Butterbase):");
-  const collection = "bora-check";
-  try {
-    const ingest = await fetch(`${appUrl}/rag/${collection}/documents`, {
+  // 2. AI gateway — both surface models
+  for (const [label, model] of [
+    ["Gemini Flash (meetings)", process.env.BORA_MODEL_MEETING ?? "google/gemini-2.5-flash"],
+    ["Claude 4.8 (chat/notes/Slack)", process.env.BORA_MODEL_CHAT ?? "anthropic/claude-opus-4.8"],
+  ] as const) {
+    const r = await fetch(`${appUrl}/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
-      body: JSON.stringify({ text: "The Bora project mascot is a blue otter named Pip." }),
+      body: JSON.stringify({ model, messages: [{ role: "user", content: "Reply with: ok" }], max_tokens: 8 }),
     });
-    if (!ingest.ok) fail(`RAG ingest returned ${ingest.status} (create the '${collection}' collection first?)`);
-    ok("ingested a test document");
-    // Note: ingestion is async; a query immediately after may return no chunks yet.
-    ok("RAG endpoint reachable (query after ingestion completes to confirm retrieval)");
-  } catch (e) {
-    fail("RAG round-trip failed", e);
+    if (!r.ok) {
+      console.error(`  ✗ gateway ${model} → ${r.status}`);
+      process.exit(1);
+    }
+    console.log(`  ✓ gateway: ${label}`);
   }
 
-  console.log("\nAll Phase 0 checks passed.\n");
+  console.log("\nAll good. For full verification run: npm test\n");
 }
 
-main();
+main().catch((e) => {
+  console.error("fatal:", e instanceof Error ? e.message : e);
+  process.exit(1);
+});
