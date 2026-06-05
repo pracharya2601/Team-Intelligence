@@ -1,3 +1,7 @@
+# Secrets
+.env
+.env.local
+
 # Planning / project docs (not part of the skills work)
 BUILD-PLAN.md
 SPONSORS.md
