@@ -57,12 +57,20 @@ The **living checklist** for Bora, derived from [`PLAN.md`](PLAN.md) (the full d
 - [ ] Google sign-in button → `/auth/{app}/oauth/google?redirect_to=…` *(wired in UI; needs OAuth creds #9 to work)*
 - [x] Create-organization flow (creator → admin) — `org-create` deployed + verified
 - [x] Org console UI built: `pages/Org.tsx` (`/org/:id`) — members table (RLS read) + invite + role + remove; Home links to it
-- [x] `functions/org-members.ts` written (admin-checked invite / set_role / remove)
-- 🔄 **Deploy `org-members`** so invite/role/remove work (writes RLS-blocked for users) — needs BB account
+- [x] `functions/org-members.ts` — admin-checked invite / set_role / remove (self-contained; service key over data API)
+- [x] **Deployed `org-members`** via `scripts/deploy-fn.mjs` (HTTP + service key — no MCP needed) + **verified 5/5**:
+      invite→201, duplicate→409, set_role→200, outsider→403, remove→200. `remove` is a **soft-delete**
+      (`status='removed'`; a hard DELETE from a function 502s at the gateway though it succeeds).
 - [ ] Flip invited→active on first login matching `invited_email` (post-auth hook function `on-auth`)
 - [x] Role gating in UI (admin-only controls) + at the function (active-admin check)
 - [ ] App shell sidebar nav (Chat · Meetings · Context · Members · Settings) — currently per-page headers only
-- [ ] **Verify:** admin invites member → member joins → role gating holds (blocked on `org-members` deploy)
+- [ ] **Verify (browser):** admin invites member → member joins → role gating holds. Function paths
+      verified via smoke; "member joins" needs the `on-auth` flip + a real browser pass.
+
+> 🛠 **Function deploy path (whole team):** the bb_sk service key has control-plane access over HTTP
+> (`POST /v1/{app}/functions`). Use `node scripts/deploy-fn.mjs <file> <name>` to deploy any
+> **self-contained** function (no `./_shared` imports — inline helpers) without MCP. Logs:
+> `GET /v1/{app}/functions/<name>/logs`. (MCP `manage_*` only works once it's connected to this app's account.)
 
 > ⚠️ **Known type issue (Phase 4, [B]):** `functions/_shared/memory.ts` doesn't match the
 > `@xtraceai/memory` SDK API (`group_ids`/`recall`/`groups`) → `tsc -b` fails, so `npm run build`

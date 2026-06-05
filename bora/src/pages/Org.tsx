@@ -34,7 +34,7 @@ export function OrgPage() {
         select<OrgMember>("org_members", { org_id: `eq.${id}` }),
       ]);
       setOrg(orgs[0] ?? null);
-      setMembers(mem);
+      setMembers(mem.filter((m) => m.status !== "removed"));
     } catch (e: any) {
       setError(e?.message ?? "Failed to load organization");
     }

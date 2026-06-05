@@ -15,7 +15,7 @@
  */
 
 export type Role = "admin" | "member";
-export type MemberStatus = "invited" | "active";
+export type MemberStatus = "invited" | "active" | "removed";
 export type MeetingStatus = "scheduled" | "joining" | "live" | "done" | "error";
 export type BotMode = "idle" | "listening" | "hand_raised" | "speaking";
 export type ContextStatus = "pending" | "ingesting" | "ready" | "error";
