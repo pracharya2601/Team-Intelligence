@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { callFn, select } from "../lib/api";
+import {
+  callFn,
+  integrationConnect,
+  integrationConnections,
+  integrationDisconnect,
+  select,
+  type IntegrationConnection,
+} from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { OrgLayout } from "../components/OrgLayout";
 import type { Bot, OrgMember, Organization } from "../../shared/types";
@@ -19,17 +26,19 @@ export function SettingsPage() {
   const [orgName, setOrgName] = useState("");
   const [botName, setBotName] = useState("");
   const [persona, setPersona] = useState("");
-  const [busy, setBusy] = useState<"" | "org" | "bot">("");
+  const [busy, setBusy] = useState<"" | "org" | "bot" | "gmail">("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [gmail, setGmail] = useState<IntegrationConnection | null>(null);
 
   async function load() {
     setError("");
     try {
-      const [orgs, bots, mem] = await Promise.all([
+      const [orgs, bots, mem, conns] = await Promise.all([
         select<Organization>("organizations", { id: `eq.${id}` }),
         select<Bot>("bots", { org_id: `eq.${id}` }),
         select<OrgMember>("org_members", { org_id: `eq.${id}`, user_id: `eq.${user?.id ?? ""}` }),
+        integrationConnections().catch(() => [] as IntegrationConnection[]),
       ]);
       const o = orgs[0] ?? null;
       const b = bots[0] ?? null;
@@ -39,8 +48,36 @@ export function SettingsPage() {
       setBotName(b?.name ?? "Bora");
       setPersona(b?.persona ?? "");
       setIsAdmin(mem.some((m) => m.role === "admin" && m.status === "active"));
+      setGmail(conns.find((c) => c.toolkit_slug === "gmail" && /active/i.test(c.status)) ?? null);
     } catch (e: any) {
       setError(e?.message ?? "Failed to load settings");
+    }
+  }
+
+  async function connectGmail() {
+    setBusy("gmail");
+    setError("");
+    try {
+      const authUrl = await integrationConnect("gmail", `${window.location.origin}/org/${id}/settings`);
+      window.location.href = authUrl; // returns here after OAuth; load() then shows "connected"
+    } catch (err: any) {
+      setError(err?.message ?? "Couldn't start Gmail connection");
+      setBusy("");
+    }
+  }
+
+  async function disconnectGmail() {
+    if (!gmail) return;
+    setBusy("gmail");
+    setError("");
+    try {
+      await integrationDisconnect(gmail.id);
+      setNotice("Gmail disconnected.");
+      await load();
+    } catch (err: any) {
+      setError(err?.message ?? "Couldn't disconnect");
+    } finally {
+      setBusy("");
     }
   }
 
@@ -116,6 +153,34 @@ export function SettingsPage() {
           </div>
         )}
       </form>
+
+      <div className="panel col">
+        <h3 style={{ margin: 0 }}>Email (Gmail)</h3>
+        <div className="muted" style={{ fontSize: 13 }}>
+          Connect a Gmail account so Bora can email admins a recap after each meeting.
+          The recap is sent from the connected account.
+        </div>
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          <span>
+            {gmail ? (
+              <><span className="badge badge-active">connected</span> Gmail is connected.</>
+            ) : (
+              <span className="muted">Not connected.</span>
+            )}
+          </span>
+          {isAdmin && (
+            gmail ? (
+              <button className="secondary" disabled={busy !== ""} onClick={disconnectGmail}>
+                {busy === "gmail" ? "…" : "Disconnect"}
+              </button>
+            ) : (
+              <button disabled={busy !== ""} onClick={connectGmail}>
+                {busy === "gmail" ? "…" : "Connect Gmail"}
+              </button>
+            )
+          )}
+        </div>
+      </div>
 
       {notice && <div className="muted">{notice}</div>}
       {error && <div className="error">{error}</div>}

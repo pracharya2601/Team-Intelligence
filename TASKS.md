@@ -160,10 +160,19 @@ The **living checklist** for Bora, derived from [`PLAN.md`](PLAN.md) (the full d
 
 - [ ] `functions/_shared/slack.ts` + `functions/slack-event.ts`: Spectrum Slack provider; on **tag** → run `runChatAgent` → `space.send(reply)` in thread
 - [ ] Map Slack `team_id`/user → org/bot via `bots.slack_team_id`; Slack uses **shared** team memory (never private)
-- [ ] `functions/recap-email.ts`: Gmail `GMAIL_SEND_EMAIL` → email org admins on meeting end (summary + decisions + actions + recap link)
+- [~] `functions/recap-email.ts` — reads meeting + `meeting_artifacts.ai_notes`, derives admin
+      recipients (org admins' emails; `to` override), formats an HTML recap (summary · decisions ·
+      actions · risks + link), sends via Gmail `GMAIL_SEND_EMAIL` (`/integrations/execute`) from a
+      connected admin's account. **Verified live up to the send**: recipients derived, reaches send,
+      **graceful no-op** when no Gmail connected; explicit `to` honored. ⛔ **live send pends a Gmail
+      connection** (Settings → Connect Gmail). Caller check: service/cron allowed; a user must be an
+      org member.
+- [x] **Connect Gmail** UI — `Settings.tsx` Gmail panel + `api.ts` `integrationConnect/Connections/
+      Disconnect`. Admin clicks Connect → `/integrations/connect` → Composio OAuth → back to Settings.
+      **Verified**: connect returns a real OAuth `authUrl`. *(Completing OAuth is a one-time manual step.)*
 - [ ] Cron `daily-recap` function: batch "today's meetings" digest
 - [ ] **Verify:** tag Bora in Slack → in-thread project-aware reply
-- [ ] **Verify:** end a meeting → admin inbox gets recap email with working link
+- [ ] **Verify:** end a meeting → admin inbox gets recap email *(needs a connected Gmail + Track A meeting-end calling recap-email — via `/functions/recap-email/invoke` with the service key, or a user JWT)*
 
 ---
 

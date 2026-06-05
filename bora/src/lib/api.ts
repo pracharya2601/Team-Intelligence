@@ -111,6 +111,40 @@ export async function claimInvites(): Promise<{ claimed: number; orgs: string[] 
   return callFn<{ claimed: number; orgs: string[] }>("claim-invites");
 }
 
+// ── Integrations (Gmail connect, as the signed-in user) ─────────────────────
+export interface IntegrationConnection {
+  id: string;
+  toolkit_slug: string;
+  status: string;
+  connected_at?: string;
+}
+
+/** The signed-in user's connected integration accounts. */
+export async function integrationConnections(): Promise<IntegrationConnection[]> {
+  const res = await fetch(`${appUrl}/integrations/connections`, { headers: authHeaders() });
+  const body = await asJson<{ connections: IntegrationConnection[] }>(res);
+  return body.connections ?? [];
+}
+
+/** Start an OAuth connect for a toolkit (e.g. "gmail"); returns the URL to redirect the user to. */
+export async function integrationConnect(toolkit: string, redirectUrl: string): Promise<string> {
+  const res = await fetch(`${appUrl}/integrations/connect`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ toolkit, redirectUrl }),
+  });
+  const body = await asJson<{ authUrl: string; connectionRequestId: string }>(res);
+  return body.authUrl;
+}
+
+export async function integrationDisconnect(connectionId: string): Promise<void> {
+  const res = await fetch(`${appUrl}/integrations/connections/${connectionId}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok && res.status !== 204) await asJson(res);
+}
+
 // ── Functions (all server logic) ─────────────────────────────────────────────
 export async function callFn<T = any>(name: string, body: unknown = {}): Promise<T> {
   const res = await fetch(`${appUrl}/fn/${name}`, {
