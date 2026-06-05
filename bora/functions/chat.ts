@@ -4,10 +4,11 @@
  * Private per-user chat with Bora. Persists chat_threads / chat_messages and answers with Claude
  * (off the live-meeting path — see model policy) through the Butterbase AI gateway.
  *
- * Retrieval (both best-effort, never block a turn): `search_context` pulls relevant chunks from the
- * org's private RAG collection, and `search_meetings` surfaces relevant recent meeting notes
- * (summary / decisions / action items). Both are injected as system context with citations
- * ([n] for knowledge, [Mn] for meetings).
+ * Agentic retrieval: the model runs a tool-calling loop over the Butterbase AI gateway and decides
+ * when to call `search_context` (org private RAG → [n] snippets) and/or `search_meetings` (recent
+ * meeting notes → [Mn] cards). Tool results are fed back until the model answers; only the final
+ * reply is persisted (tool plumbing stays in-memory). Tools are best-effort — they return a status
+ * string instead of throwing, so a missing RAG collection or no meetings never breaks a turn.
  *
  * PRIVACY (the core guarantee):
  *  - chat_threads / chat_messages are `user_id = caller` ONLY (RLS, Phase 0). This function runs
@@ -76,41 +77,35 @@ export default async function handler(req: Request, ctx: any): Promise<Response>
       /* fall back to defaults */
     }
 
-    // search_context — retrieve relevant org knowledge from the org's RAG collection.
-    // RAG is best-effort: it must NEVER block a chat turn. The collection is per-org and private;
-    // we query it with the service key only after the membership check above.
-    let context = "";
-    try {
-      const coll = `org-${String(org_id).replace(/[^a-z0-9]/gi, "").toLowerCase()}`;
-      const head = await fetch(`${API}/rag/collections/${coll}`, { headers: { Authorization: `Bearer ${KEY}` } });
-      if (head.ok) {
-        const q = await svc(`/rag/collections/${coll}/query`, {
+    // ── Retrieval tools the model can call on demand ─────────────────────────────────
+    // Both are best-effort (return a plain status string instead of throwing) and read with the
+    // service key — the membership check above already authorized this caller for this org.
+    const orgColl = `org-${String(org_id).replace(/[^a-z0-9]/gi, "").toLowerCase()}`;
+
+    async function runSearchContext(query: string): Promise<string> {
+      try {
+        const head = await fetch(`${API}/rag/collections/${orgColl}`, { headers: { Authorization: `Bearer ${KEY}` } });
+        if (!head.ok) return "No team knowledge base has been set up yet.";
+        const q = await svc(`/rag/collections/${orgColl}/query`, {
           method: "POST",
-          body: JSON.stringify({ query: content, top_k: 5, threshold: 0.3 }),
+          body: JSON.stringify({ query, top_k: 5, threshold: 0.3 }),
         });
         const chunks: any[] = q?.chunks ?? [];
-        if (chunks.length) {
-          context =
-            "Relevant team knowledge (cite the [n] you used):\n" +
-            chunks.map((c, i) => `[${i + 1}] ${c.content}`).join("\n");
-        }
+        if (!chunks.length) return "No matching team knowledge found.";
+        return chunks.map((c, i) => `[${i + 1}] ${c.content}`).join("\n");
+      } catch {
+        return "Team knowledge is unavailable right now.";
       }
-    } catch {
-      /* RAG unavailable / empty collection — answer without it */
     }
 
-    // search_meetings — surface relevant recent meeting notes (summary / decisions / action items)
-    // so the bot can answer "what did we decide?" / "what was discussed?". Best-effort: never blocks
-    // a chat turn. Ranked by keyword overlap with the question, then recency (falls back to pure
-    // recency for generic questions). Service-key reads, already gated by the membership check above.
-    let meetingContext = "";
-    try {
-      const meets: any[] = await svc(`/meetings?org_id=eq.${org_id}&status=eq.done&order=ended_at.desc&limit=8`);
-      const ids: string[] = meets.map((m) => m.id).filter(Boolean);
-      if (ids.length) {
+    async function runSearchMeetings(query: string): Promise<string> {
+      try {
+        const meets: any[] = await svc(`/meetings?org_id=eq.${org_id}&status=eq.done&order=ended_at.desc&limit=8`);
+        const ids: string[] = meets.map((m) => m.id).filter(Boolean);
+        if (!ids.length) return "No completed meetings yet.";
         const arts: any[] = await svc(`/meeting_artifacts?meeting_id=in.(${ids.join(",")})`);
         const notesByMeeting = new Map<string, any>(arts.map((a) => [a.meeting_id, a.ai_notes || {}]));
-        const terms = content.toLowerCase().match(/[a-z0-9]{4,}/g) || [];
+        const terms = query.toLowerCase().match(/[a-z0-9]{4,}/g) || [];
         const asList = (a: any) => (Array.isArray(a) ? a.map((x) => String(x)) : []);
         const cards = meets
           .map((m) => {
@@ -132,14 +127,30 @@ export default async function handler(req: Request, ctx: any): Promise<Response>
           .filter(Boolean) as { score: number; ended: string; text: string }[];
         cards.sort((a, b) => b.score - a.score || b.ended.localeCompare(a.ended));
         const top = cards.slice(0, 6);
-        if (top.length) {
-          meetingContext =
-            "Recent team meetings (cite the [Mn] you used):\n" +
-            top.map((c, i) => `[M${i + 1}] ${c.text}`).join("\n");
-        }
+        if (!top.length) return "No meeting notes available yet.";
+        return top.map((c, i) => `[M${i + 1}] ${c.text}`).join("\n");
+      } catch {
+        return "Meeting notes are unavailable right now.";
       }
-    } catch {
-      /* meetings unavailable / no notes yet — answer without them */
+    }
+
+    const TOOLS = [
+      { type: "function", function: {
+        name: "search_context",
+        description: "Search the team's private knowledge base (admin-added docs and context) for info relevant to the question. Returns numbered snippets [n].",
+        parameters: { type: "object", properties: { query: { type: "string", description: "What to look up" } }, required: ["query"] },
+      } },
+      { type: "function", function: {
+        name: "search_meetings",
+        description: "Search recent completed team meetings for summaries, decisions, and action items relevant to the question. Returns numbered meeting cards [Mn].",
+        parameters: { type: "object", properties: { query: { type: "string", description: "What to look up" } }, required: ["query"] },
+      } },
+    ];
+    async function runTool(name: string, args: any): Promise<string> {
+      const query = String(args?.query ?? "").trim() || content;
+      if (name === "search_context") return runSearchContext(query);
+      if (name === "search_meetings") return runSearchMeetings(query);
+      return `Unknown tool: ${name}`;
     }
 
     // Resolve the thread — existing (must be the caller's) or new.
@@ -172,24 +183,49 @@ export default async function handler(req: Request, ctx: any): Promise<Response>
       persona ? `Personality and behavior to embody: ${persona}` : "",
       "This conversation is private to this user. Never reveal, quote, or reference any other",
       "user's private chat, and never claim to have access to other people's private messages.",
-      "You may use the organization's shared knowledge and recent meeting notes provided below.",
-      "Ground your answer in them and cite the sources you used — [n] for team knowledge, [Mn] for",
-      "meetings; if they don't cover the question, say so rather than guessing. Be concise and direct.",
+      "When a question might be answered by team knowledge or past meetings, call the search_context",
+      "and/or search_meetings tools before answering. Ground answers in the tool results and cite the",
+      "sources you used — [n] for team knowledge, [Mn] for meetings. If the tools don't cover the",
+      "question, say so rather than guessing. For small talk you don't need tools. Be concise and direct.",
     ].filter(Boolean).join(" ");
 
-    const messages = [
+    const messages: any[] = [
       { role: "system", content: system },
-      ...(context ? [{ role: "system", content: context }] : []),
-      ...(meetingContext ? [{ role: "system", content: meetingContext }] : []),
       ...history.map((m) => ({ role: m.role, content: m.content })),
     ];
 
-    // Off-path completion via the Butterbase AI gateway (Claude — not on the live meeting path).
-    const gw = await svc(`/chat/completions`, {
-      method: "POST",
-      body: JSON.stringify({ model: MODEL, messages, max_tokens: 1024 }),
-    });
-    const reply = String(gw?.choices?.[0]?.message?.content ?? "").trim() || "(no response)";
+    // Agent loop (off the live-meeting path — Claude): let the model call retrieval tools, feed the
+    // results back, and repeat until it produces an answer. Tool plumbing stays in-memory — only the
+    // final reply is persisted to the thread. The last round drops tools to force a text answer.
+    const MAX_ROUNDS = 4;
+    let reply = "";
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      const lastRound = round === MAX_ROUNDS - 1;
+      const gw = await svc(`/chat/completions`, {
+        method: "POST",
+        body: JSON.stringify({
+          model: MODEL,
+          max_tokens: 1024,
+          messages,
+          ...(lastRound ? {} : { tools: TOOLS, tool_choice: "auto" }),
+        }),
+      });
+      const msg = gw?.choices?.[0]?.message ?? {};
+      const toolCalls: any[] = msg.tool_calls ?? [];
+      if (toolCalls.length && !lastRound) {
+        messages.push({ role: "assistant", content: msg.content ?? null, tool_calls: toolCalls });
+        for (const tc of toolCalls) {
+          let args: any = {};
+          try { args = JSON.parse(tc.function?.arguments ?? "{}"); } catch { args = {}; }
+          const result = await runTool(tc.function?.name, args);
+          messages.push({ role: "tool", tool_call_id: tc.id, content: result });
+        }
+        continue;
+      }
+      reply = String(msg.content ?? "").trim();
+      break;
+    }
+    if (!reply) reply = "(no response)";
 
     // Persist the assistant's reply (owned by the same user so RLS lets them read it back).
     await svc(`/chat_messages`, {

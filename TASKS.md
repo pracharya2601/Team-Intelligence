@@ -128,16 +128,19 @@ The **living checklist** for Bora, derived from [`PLAN.md`](PLAN.md) (the full d
 
 ## Phase 4 — Private chat + Xtrace two-tier memory + RocketRide ingestion  **[B]**
 
-- [ ] `functions/_shared/agent.ts`: agent loop on Butterbase gateway (Claude, OpenAI-compatible tool-calling)
-- [~] Agent tools: **`search_context` + `search_meetings` done** — `chat.ts` retrieves top
-      org-collection chunks (threshold 0.3) AND relevant recent meeting notes (summary / decisions /
-      action items, ranked by keyword overlap then recency), injecting both with citations ([n] for
-      knowledge, [Mn] for meetings). Both best-effort — never block a turn. **Verified live**:
-      (a) seeded an org fact → asked a question only answerable from it → correct answer + [n] citation;
-      (b) asked "what were our recent meetings about?" → bot grounded in both real meeting summaries
-      and cited [M1]/[M2] (throwaway active member; data cleaned up). *(Remaining tools:
-      `recall_team_memory`/`recall_my_memory` (Xtrace — blocked on keys), Gmail — and a formal
-      tool-calling loop; current retrieval is inline injection, which is enough until those land.)*
+- [x] **Agent tool-calling loop** — `chat.ts` now runs a real OpenAI-compatible tool loop on the
+      Butterbase gateway (Claude): the model decides when to call tools, results are fed back, repeat
+      up to 4 rounds (last round drops tools to force an answer); only the final reply is persisted.
+      *(Implemented inline in `chat.ts` rather than `_shared/agent.ts` because deployed functions must
+      be self-contained — no `./_shared` imports.)* **Verified live**: gateway tool round-trip works for
+      Gemini AND Claude; a meeting question triggered `search_meetings` → grounded answer with
+      [M1][M2][M3]; small talk answered with no tool calls. Test member + threads cleaned up.
+- [x] Agent tools: **`search_context` + `search_meetings`** are now real callable tools (not inline
+      injection) — `search_context` queries the org RAG collection (top_k 5, threshold 0.3 → [n]
+      snippets); `search_meetings` ranks recent completed meetings by keyword overlap then recency
+      (→ [Mn] cards). Both best-effort (return a status string, never throw). *(Remaining tools:
+      `recall_team_memory`/`recall_my_memory` (Xtrace — blocked on keys), Gmail send — slot into the
+      same loop when those land.)*
 - [x] System prompt **forbids** revealing another user's private chat (in `functions/chat.ts`)
 - [x] Chat UI `pages/Chat.tsx` + `functions/chat.ts`: persist `chat_threads`/`chat_messages` (RLS-private),
       reply via Claude (`claude-opus-4.8`, off-path) through the gateway. Deployed + **verified live**:
