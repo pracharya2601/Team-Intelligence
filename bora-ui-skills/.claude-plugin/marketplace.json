@@ -1,0 +1,15 @@
+{
+  "name": "bora-ui-skills",
+  "description": "Local Bora UI design-system skills marketplace",
+  "owner": {
+    "name": "Prakash Acharya"
+  },
+  "plugins": [
+    {
+      "name": "bora-ui-skills",
+      "description": "Build consistent enterprise dashboard UI for Bora — design foundation (tokens), component primitives, and dashboard layout patterns.",
+      "version": "0.1.0",
+      "source": "./"
+    }
+  ]
+}
