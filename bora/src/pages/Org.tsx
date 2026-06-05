@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { callFn, select } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { OrgLayout } from "../components/OrgLayout";
 import type { Organization, OrgMember } from "../../shared/types";
 
 /**
@@ -11,7 +12,7 @@ import type { Organization, OrgMember } from "../../shared/types";
  */
 export function OrgPage() {
   const { id = "" } = useParams();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [org, setOrg] = useState<Organization | null>(null);
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [email, setEmail] = useState("");
@@ -81,27 +82,7 @@ export function OrgPage() {
   }
 
   return (
-    <div className="container col">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <div className="row">
-          <Link to="/" className="muted">← Orgs</Link>
-          <span className="brand" style={{ fontSize: 22 }}>{org?.name ?? "Organization"}</span>
-        </div>
-        <div className="row">
-          <Link to={`/org/${id}/meetings`} className="secondary" style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
-            Meetings
-          </Link>
-          <Link to={`/org/${id}/context`} className="secondary" style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
-            Knowledge
-          </Link>
-          <Link to={`/org/${id}/chat`} className="secondary" style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
-            Chat
-          </Link>
-          <span className="muted">{user?.email}</span>
-          <button className="secondary" onClick={logout}>Log out</button>
-        </div>
-      </div>
-
+    <OrgLayout orgId={id} orgName={org?.name} title="Members">
       {!isAdmin && org && (
         <div className="muted">You're a member of this org. Only admins can invite or change roles.</div>
       )}
@@ -183,6 +164,6 @@ export function OrgPage() {
 
       {notice && <div className="muted">{notice}</div>}
       {error && <div className="error">{error}</div>}
-    </div>
+    </OrgLayout>
   );
 }

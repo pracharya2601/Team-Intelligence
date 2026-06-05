@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { callFn, select } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { OrgLayout } from "../components/OrgLayout";
 import type { ContextSource, OrgMember, Organization } from "../../shared/types";
 
 /**
@@ -11,7 +12,7 @@ import type { ContextSource, OrgMember, Organization } from "../../shared/types"
  */
 export function ContextPage() {
   const { id = "" } = useParams();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [org, setOrg] = useState<Organization | null>(null);
   const [sources, setSources] = useState<ContextSource[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -78,21 +79,7 @@ export function ContextPage() {
   }
 
   return (
-    <div className="container col">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <div className="row">
-          <Link to={`/org/${id}`} className="muted">← {org?.name ?? "Organization"}</Link>
-          <span className="brand" style={{ fontSize: 22 }}>Knowledge</span>
-        </div>
-        <div className="row">
-          <Link to={`/org/${id}/chat`} className="secondary" style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
-            Chat
-          </Link>
-          <span className="muted">{user?.email}</span>
-          <button className="secondary" onClick={logout}>Log out</button>
-        </div>
-      </div>
-
+    <OrgLayout orgId={id} orgName={org?.name} title="Knowledge">
       {!isAdmin && (
         <div className="muted">You can see the team's knowledge sources. Only admins can add or remove them.</div>
       )}
@@ -145,6 +132,6 @@ export function ContextPage() {
 
       {notice && <div className="muted">{notice}</div>}
       {error && <div className="error">{error}</div>}
-    </div>
+    </OrgLayout>
   );
 }

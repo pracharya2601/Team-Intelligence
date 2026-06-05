@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { callFn, select } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { OrgLayout } from "../components/OrgLayout";
 import type { ChatMessageRow, ChatThread, Organization } from "../../shared/types";
 
 /**
@@ -11,7 +12,7 @@ import type { ChatMessageRow, ChatThread, Organization } from "../../shared/type
  */
 export function ChatPage() {
   const { id = "" } = useParams();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [org, setOrg] = useState<Organization | null>(null);
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThread, setActiveThread] = useState<string | null>(null);
@@ -99,18 +100,7 @@ export function ChatPage() {
   }
 
   return (
-    <div className="container col" style={{ maxWidth: 1040 }}>
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <div className="row">
-          <Link to={`/org/${id}`} className="muted">← {org?.name ?? "Organization"}</Link>
-          <span className="brand" style={{ fontSize: 22 }}>Chat</span>
-        </div>
-        <div className="row">
-          <span className="muted">{user?.email}</span>
-          <button className="secondary" onClick={logout}>Log out</button>
-        </div>
-      </div>
-
+    <OrgLayout orgId={id} orgName={org?.name} title="Chat">
       <div className="chat-layout">
         <div className="panel col" style={{ gap: 8, alignSelf: "start" }}>
           <button onClick={newChat} disabled={busy && !activeThread}>+ New chat</button>
@@ -157,6 +147,6 @@ export function ChatPage() {
           {error && <div className="error">{error}</div>}
         </div>
       </div>
-    </div>
+    </OrgLayout>
   );
 }

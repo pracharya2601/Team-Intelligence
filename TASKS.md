@@ -75,7 +75,9 @@ The **living checklist** for Bora, derived from [`PLAN.md`](PLAN.md) (the full d
       active+user_id, idempotent second call→0. *(Used a client-called claim instead of a provider
       post-auth trigger — reliable, idempotent, no special trigger type needed.)*
 - [x] Role gating in UI (admin-only controls) + at the function (active-admin check)
-- [ ] App shell sidebar nav (Chat · Meetings · Context · Members · Settings) — currently per-page headers only
+- [x] App shell sidebar nav — `components/OrgLayout.tsx` (sidebar: Members · Chat · Knowledge +
+      account/logout, active-route highlight). Members/Chat/Knowledge pages now render inside it
+      (per-page headers removed). *(Meetings · Settings nav slots added when those pages land.)*
 - [ ] **Verify (browser):** admin invites member → member joins → role gating holds. Function paths
       verified via smoke; "member joins" needs the `on-auth` flip + a real browser pass.
 
