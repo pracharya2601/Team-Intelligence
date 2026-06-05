@@ -11,6 +11,7 @@
     "zip": "node scripts/zip-dist.js",
     "deploy": "npm run build && npm run zip",
     "check": "tsx scripts/check.ts",
+    "check:recall": "tsx scripts/check-recall.ts",
     "test": "tsx tests/phase0.test.ts"
   },
   "dependencies": {

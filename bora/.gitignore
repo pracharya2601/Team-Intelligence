@@ -11,6 +11,9 @@ next-env.d.ts
 # production / build output
 /build
 /dist
+frontend.zip
+# generated self-contained function bundles (built by scripts/bundle-fn.mjs for deploy)
+/functions/_deploy
 
 # secrets / env — NEVER commit
 .env
