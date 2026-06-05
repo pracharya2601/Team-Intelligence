@@ -28,6 +28,7 @@ export function OrgLayout({
     { to: `${base}/chat`, label: "Chat" },
     { to: `${base}/context`, label: "Knowledge" },
     { to: `${base}/meetings`, label: "Meetings" },
+    { to: `${base}/settings`, label: "Settings" },
   ];
   const isActive = (to: string, exact?: boolean) => (exact ? pathname === to : pathname.startsWith(to));
 
