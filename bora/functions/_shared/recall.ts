@@ -86,9 +86,8 @@ export async function createBot(env: RecallEnv, input: CreateBotInput): Promise<
   const recording_config: Record<string, unknown> = {
     // Recall.ai's own streaming transcript provider → real-time transcript webhooks.
     transcript: { provider: { recallai_streaming: {} } },
-    // Capture the full recording: mixed video AND mixed audio (so the recap has both).
+    // Mixed video (includes audio) — the recap embeds this. No separate audio-only file.
     video_mixed: {},
-    audio_mixed: {},
     // Participant events → drives the auto-leave-when-empty rule (recall-webhook maybeAutoLeave).
     participant_events: {},
   };
