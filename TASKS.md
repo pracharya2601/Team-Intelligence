@@ -144,6 +144,12 @@ The **living checklist** for Bora, derived from [`PLAN.md`](PLAN.md) (the full d
       send→reply persisted, author reads own thread (2 msgs), **RLS isolation proven** (member B sees
       0 of A's messages and A's thread is absent from B's list). Threads list + composer wired
       (`/org/:id/chat`, linked from the Org page). *(Agent tools/memory/RAG come next — basic chat first.)*
+- [x] Chat **thread management** — `functions/chat-threads.ts` (rename · AI **autotitle** · delete
+      thread+messages) + `api.ts` `renameThread/autotitleThread/deleteThread`. Ownership enforced in
+      code (loads thread, rejects unless `user_id === caller`). Deployed + **verified live 6/6**:
+      autotitle→"Drafting onboarding flow rollout plan", rename→persists, **another member gets 404**
+      on rename AND delete of the owner's thread, owner delete removes thread + both messages; test
+      members cleaned up. *(UI buttons to be wired into the in-progress Chat.tsx redesign.)*
 - [ ] After each turn → write to **Xtrace** per-user scope (never shared)
 - [ ] `functions/_shared/memory.ts` two-tier helpers (exists) — wire into chat + meetings
 - [~] Context ingestion: `functions/ingest-source.ts` (admin-only) — **text path done + verified**:

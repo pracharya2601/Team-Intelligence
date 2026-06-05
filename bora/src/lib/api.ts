@@ -111,6 +111,20 @@ export async function claimInvites(): Promise<{ claimed: number; orgs: string[] 
   return callFn<{ claimed: number; orgs: string[] }>("claim-invites");
 }
 
+// ── Chat thread management (caller's own threads only; enforced server-side) ──
+/** Rename one of the caller's chat threads. */
+export async function renameThread(threadId: string, title: string): Promise<{ thread_id: string; title: string }> {
+  return callFn("chat-threads", { thread_id: threadId, action: "rename", title });
+}
+/** Generate a concise AI title for a thread from its messages. */
+export async function autotitleThread(threadId: string): Promise<{ thread_id: string; title: string }> {
+  return callFn("chat-threads", { thread_id: threadId, action: "autotitle" });
+}
+/** Delete one of the caller's chat threads and its messages. */
+export async function deleteThread(threadId: string): Promise<{ thread_id: string; deleted: boolean }> {
+  return callFn("chat-threads", { thread_id: threadId, action: "delete" });
+}
+
 // ── Integrations (Gmail connect, as the signed-in user) ─────────────────────
 export interface IntegrationConnection {
   id: string;

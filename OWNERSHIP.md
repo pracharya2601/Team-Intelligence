@@ -30,7 +30,7 @@ OK): `git commit --no-verify`.
 - `bora/src/pages/Meeting*.tsx`, `bora/src/pages/Bot*.tsx`, `bora/src/pages/Recap.tsx`
 
 ## Track B — Org / Chat / Knowledge
-- `bora/functions/org-*.ts`, `bora/functions/claim-invites.ts`, `bora/functions/chat.ts`,
+- `bora/functions/org-*.ts`, `bora/functions/claim-invites.ts`, `bora/functions/chat*.ts`,
   `bora/functions/ingest-*.ts`, `bora/functions/slack-*.ts`, `bora/functions/recap-*.ts`,
   `bora/functions/daily-recap.ts`
 - `bora/functions/_shared/agent.ts`, `bora/functions/_shared/memory.ts`, `bora/functions/_shared/slack.ts`
