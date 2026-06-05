@@ -91,6 +91,11 @@ OpenAI-compatible). **No Anthropic/Gemini keys.** Only Nebius is hosted/keyed se
 
 ## Working in this repo (2-person build)
 
+- **[`TASKS.md`](TASKS.md) is the live task tracker** — the single source of truth for what's being
+  worked on. **Update it in the same commit as the work:** mark a task `🔄` when you start, `- [x]`
+  when it's done *and verified*, and add new tasks as they surface. PLAN.md = design, WORK-SPLIT.md =
+  strategy, **TASKS.md = current state.**
+
 We split the build across two tracks that own disjoint files. **See [`WORK-SPLIT.md`](WORK-SPLIT.md)
 for who owns what and the merge plan.** The Phase 0 shared foundation (Vite SPA scaffold,
 `shared/types.ts`, `functions/_shared/*`, `src/lib/api.ts`, `.env.example`, and the live Butterbase
