@@ -1,0 +1,12 @@
+{
+  "name": "recall-skills",
+  "description": "Build meeting-bot integrations with Recall.ai — the API for capturing & using meeting data (recordings, transcripts, real-time audio/video, interactive AI agents). Skills for setup, bots, webhooks, real-time, transcription, output media, and the Recall MCP server.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Prakash Acharya"
+  },
+  "homepage": "https://docs.recall.ai",
+  "repository": "https://github.com/recallai",
+  "license": "MIT",
+  "keywords": ["recall", "recall-ai", "meeting-bot", "zoom", "google-meet", "microsoft-teams", "transcription", "voice-agent", "mcp", "webhooks"]
+}

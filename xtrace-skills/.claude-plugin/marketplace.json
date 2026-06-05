@@ -1,0 +1,15 @@
+{
+  "name": "xtrace-skills",
+  "description": "Local XTrace skills marketplace",
+  "owner": {
+    "name": "Prakash Acharya"
+  },
+  "plugins": [
+    {
+      "name": "xtrace-skills",
+      "description": "Build with XTrace — hosted agent memory + x-vec encrypted vector DB. Auth, ingest, search, groups, HTTP API, TS SDK, x-vec.",
+      "version": "0.1.0",
+      "source": "./"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "recall-skills",
+  "description": "Local Recall.ai skills marketplace",
+  "owner": {
+    "name": "Prakash Acharya"
+  },
+  "plugins": [
+    {
+      "name": "recall-skills",
+      "description": "Build meeting-bot integrations with Recall.ai — setup, bots, webhooks, real-time, transcription, output media, and MCP.",
+      "version": "0.1.0",
+      "source": "./"
+    }
+  ]
+}

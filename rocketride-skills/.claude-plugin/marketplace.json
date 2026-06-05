@@ -1,0 +1,15 @@
+{
+  "name": "rocketride-skills",
+  "description": "Local RocketRide skills marketplace",
+  "owner": {
+    "name": "Prakash Acharya"
+  },
+  "plugins": [
+    {
+      "name": "rocketride-skills",
+      "description": "Build AI/ML data pipelines with RocketRide — pipeline authoring, node catalog, SDKs, HTTP API, and MCP server.",
+      "version": "0.1.0",
+      "source": "./"
+    }
+  ]
+}

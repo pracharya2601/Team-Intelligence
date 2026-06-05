@@ -1,0 +1,12 @@
+{
+  "name": "xtrace-skills",
+  "description": "Build with XTrace — hosted memory for AI agents (ingest conversation turns → searchable facts/artifacts/episodes, scoped by user/group) and x-vec, the end-to-end encrypted vector DB. Skills for auth, ingest, search, groups, the HTTP API, the TypeScript SDK, and x-vec.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Prakash Acharya"
+  },
+  "homepage": "https://docs.xtrace.ai",
+  "repository": "https://github.com/XTraceAI",
+  "license": "MIT",
+  "keywords": ["xtrace", "memory", "ai-agents", "vector-database", "rag", "embeddings", "encryption", "homomorphic", "facts", "groups"]
+}
