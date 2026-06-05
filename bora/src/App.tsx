@@ -5,6 +5,7 @@ import { LoginPage } from "./pages/Login";
 import { AuthCallbackPage } from "./pages/AuthCallback";
 import { HomePage } from "./pages/Home";
 import { OrgPage } from "./pages/Org";
+import { ChatPage } from "./pages/Chat";
 
 /** Gate that requires a signed-in user; otherwise bounces to /login. */
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -36,7 +37,15 @@ export function App() {
             </RequireAuth>
           }
         />
-        {/* Phase 1+ routes (meetings, chat, recap, bot page) mount here. */}
+        <Route
+          path="/org/:id/chat"
+          element={
+            <RequireAuth>
+              <ChatPage />
+            </RequireAuth>
+          }
+        />
+        {/* Phase 1+ routes (meetings, recap, bot page) mount here. */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>

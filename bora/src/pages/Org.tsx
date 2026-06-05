@@ -88,6 +88,9 @@ export function OrgPage() {
           <span className="brand" style={{ fontSize: 22 }}>{org?.name ?? "Organization"}</span>
         </div>
         <div className="row">
+          <Link to={`/org/${id}/chat`} className="secondary" style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
+            Chat
+          </Link>
           <span className="muted">{user?.email}</span>
           <button className="secondary" onClick={logout}>Log out</button>
         </div>

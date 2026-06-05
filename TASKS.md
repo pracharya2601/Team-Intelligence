@@ -117,8 +117,12 @@ The **living checklist** for Bora, derived from [`PLAN.md`](PLAN.md) (the full d
 
 - [ ] `functions/_shared/agent.ts`: agent loop on Butterbase gateway (Claude, OpenAI-compatible tool-calling)
 - [ ] Agent tools: `recall_team_memory`, `recall_my_memory` (scoped to `user_id`), `search_context` (`rag_query`), `search_meetings`, Gmail (connected users)
-- [ ] System prompt **forbids** revealing another user's private chat
-- [ ] Chat UI `pages/Chat.tsx` + `functions/chat.ts`: persist `chat_threads`/`chat_messages` (RLS-private)
+- [x] System prompt **forbids** revealing another user's private chat (in `functions/chat.ts`)
+- [x] Chat UI `pages/Chat.tsx` + `functions/chat.ts`: persist `chat_threads`/`chat_messages` (RLS-private),
+      reply via Claude (`claude-opus-4.8`, off-path) through the gateway. Deployed + **verified live**:
+      send→reply persisted, author reads own thread (2 msgs), **RLS isolation proven** (member B sees
+      0 of A's messages and A's thread is absent from B's list). Threads list + composer wired
+      (`/org/:id/chat`, linked from the Org page). *(Agent tools/memory/RAG come next — basic chat first.)*
 - [ ] After each turn → write to **Xtrace** per-user scope (never shared)
 - [ ] `functions/_shared/memory.ts` two-tier helpers (exists) — wire into chat + meetings
 - [ ] Context ingestion: `functions/ingest-source.ts` → RocketRide fetch/parse (`tool_http_request` / GitHub tool / `parse`) → chunk

@@ -47,3 +47,21 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .badge-active { color: #6ddf9c; border-color: #2f6b48; }
 .badge-invited { color: var(--muted); }
 .badge-member { color: var(--muted); }
+.badge-removed { color: var(--danger); border-color: var(--danger); }
+
+/* ── Chat (Phase 4) ── */
+.chat-layout { display: grid; grid-template-columns: 240px 1fr; gap: 16px; align-items: start; }
+.thread-item {
+  background: transparent; color: var(--text); text-align: left; border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 13px; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; width: 100%;
+}
+.thread-item:hover { background: var(--panel); }
+.thread-active { border-color: var(--accent); color: var(--accent); }
+.bubble {
+  max-width: 78%; padding: 10px 14px; border-radius: 14px; line-height: 1.45;
+  white-space: pre-wrap; word-break: break-word;
+}
+.bubble-user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+.bubble-assistant { align-self: flex-start; background: var(--panel); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+@media (max-width: 720px) { .chat-layout { grid-template-columns: 1fr; } }
