@@ -2,33 +2,37 @@
 
 How we divide the 6 phases of [`PLAN.md`](PLAN.md) between two developers so we work in parallel
 with **near-zero merge conflicts**, then merge cleanly. The split is by **file ownership** — each
-track owns disjoint directories. The only shared surface is the Phase 0 foundation, which we land
-on `main` *first*.
+track owns disjoint directories.
+
+**Architecture (locked in Phase 0, see [`PHASE_0.md`](PHASE_0.md)):** Vite React **SPA**
+(`bora/src/`) + Butterbase serverless **functions** (`bora/functions/`). Server logic is a function
+called via `POST /v1/{app_id}/fn/{name}` — no Next.js, no SSR. Browser talks to Butterbase as the
+**end-user JWT** (`src/lib/api.ts`); functions run as the **service key** (`functions/_shared/*`).
 
 ---
 
-## Step 0 — Land the shared foundation on `main` FIRST (do together, ~1 sitting)
+## Step 0 — Shared foundation (✅ MOSTLY DONE — on `main`)
 
-Nothing parallel starts until these are on `main`. They're the contracts both tracks build on; if
-they churn mid-flight, every branch conflicts.
+The contracts both tracks build on are already committed (`129f389`). Done:
 
-- [ ] Next.js 15 app scaffold in `bora/` (`next.config`, `app/layout.tsx`, root shell, Tailwind)
-- [ ] `src/lib/schema.ts` — finalize table/column types (already drafted)
-- [ ] `src/lib/bb.ts` — Butterbase client (already drafted; agree the surface)
-- [ ] `src/lib/llm.ts` — gateway client (already drafted; agree `chat()` signature)
-- [ ] `.env.example` — every key documented (already drafted)
-- [ ] **RLS policies** + **realtime config** + **auth/OAuth** + **RAG collection** + **Gmail/GitHub
-      integrations** + **AI gateway `allowedModels`** — the rest of Phase 0 (PLAN.md §0.3–0.7)
-- [ ] `scripts/check.ts` green (two-user RLS check + gateway + RAG round-trip)
+- [x] Vite SPA + functions scaffold (`index.html`, `vite.config.ts`, `src/{main,App}.tsx`, `src/index.css`)
+- [x] `shared/types.ts` — typed mirror of the DB schema (the source of truth)
+- [x] `src/lib/api.ts` (browser client) · `src/lib/auth.tsx` (auth context)
+- [x] `functions/_shared/{bb,llm,memory}.ts` — function-runtime clients + `pickModel()` policy
+- [x] **Butterbase backend live:** schema, RLS, realtime, AI gateway (`allowedModels`), Gmail+GitHub integrations, service key
+- [x] `.env.example` documenting every key
 
-> Pair on this or have one person land it and the other review. **Do not branch until `npm run
-> check` passes on `main`.** Tag this commit `phase-0-foundation`.
+**Remaining Step 0 (do before branching far):**
+- [ ] Fix `scripts/check.ts` (imports deleted `src/lib/bb`/`llm`) + `.env.example` (`NEXT_PUBLIC_*`
+      → `VITE_*`, port 5173) so `npm install && npm run check && npm run dev` is green
+- [ ] **Google OAuth** — Google Cloud client_id/secret → `manage_oauth configure` → verify login
+- [ ] Deploy `org-create` function + the SPA to Butterbase
 
-Two cross-track **stub contracts** to agree on now (so neither track blocks the other later):
-- `src/lib/email.ts` → `sendRecapEmail(orgId, meetingId)` — Track A's recap handler calls it;
-  Track B implements it. Land an empty stub in Step 0.
-- `src/lib/agent.ts` → `runChatAgent({ userId, orgId, messages })` — Track B owns it; Slack (B) and
-  chat (B) both call it. Track A does **not** depend on it.
+Two cross-track **stub contracts** (so neither track blocks the other):
+- `functions/recap-email.ts` (`sendRecapEmail`-shaped: takes `{ orgId, meetingId }`) — Track A's
+  recap/`done` handler calls it; **Track B** implements it. Land a no-op stub early.
+- `functions/chat.ts` + `functions/_shared/agent.ts` (`runChatAgent({ userId, orgId, messages })`) —
+  **Track B** owns it; Slack (B) and chat (B) both call it. Track A does **not** depend on it.
 
 ---
 
@@ -39,13 +43,13 @@ Owns Recall, the proactive cascade, the bot camera page, the recap. Backend + re
 **Phases:** 2 (passive bot) → 3 (proactive cascade) → share Phase 6 hardening.
 
 **Owns these files (no one else touches them):**
-- `src/lib/recall.ts` — Recall client (createBot / getBot / output media)
-- `src/lib/escalate.ts` — Gemini Flash adjudicator/answerer (the only in-meeting brain)
-- `src/services/trigger/**` — Nebius trigger service (SpeakDecision; FastAPI sidecar or inline)
-- Butterbase functions: `recall-webhook`, `speak-trigger`
-- `src/app/meetings/**` — call-the-bot UI, live console (the "Go" gate)
-- `src/app/bot/[meetingId]/**` — the public tokenized bot camera page
-- `src/app/recap/[token]/**` — auth-gated recap page (video + AI notes + transcript)
+- `functions/_shared/recall.ts` — Recall client (createBot / getBot / output media)
+- `functions/_shared/escalate.ts` — Gemini Flash adjudicator/answerer (the only in-meeting brain)
+- `functions/recall-webhook.ts` · `functions/speak-trigger.ts` — Butterbase functions
+- Nebius trigger service (`functions/trigger.ts` inline, or a FastAPI sidecar on Nebius — decide in Phase 3)
+- SPA pages: `src/pages/Meetings.tsx`, `src/pages/MeetingLive.tsx` (live console + "Go" gate)
+- `src/pages/BotCam.tsx` — the public tokenized bot camera page (route `/bot/:meetingId`)
+- `src/pages/Recap.tsx` — auth-gated recap page (route `/recap/:token`; video + AI notes + transcript)
 
 **Key deliverables:**
 - Recall Create Bot with `output_video` → `…/bot/{meetingId}`; webhook dedupes, streams
@@ -69,16 +73,15 @@ Owns auth/org UI, the private chat agent, two-tier memory, context ingestion, Sl
 Phase 6 hardening.
 
 **Owns these files (no one else touches them):**
-- `src/app/(auth)/**` — login/signup, Google OAuth callback
-- `src/app/org/**` — create org, invite by Gmail, role management, members
-- `src/app/chat/**` + `src/app/api/chat/**` — private chat UI + API
-- `src/lib/agent.ts` — chat agent loop (Butterbase gateway, Claude, tool-calling)
-- `src/lib/memory.ts` — Xtrace two-tier (rememberUser / rememberTeam / recall) [drafted]
-- `src/lib/email.ts` — recap email via Butterbase Gmail integration
-- `src/integrations/slack.ts` — Photon Spectrum Slack presence
-- Butterbase function: RocketRide context ingestion (`context_sources` → RAG + Xtrace)
-- The app shell **nav** (Chat · Meetings · Context · Members · Settings) — Track A drops its pages
-  into routes; B owns the nav chrome.
+- SPA pages: `src/pages/{Login,AuthCallback,Home}.tsx` (exist), `src/pages/Org.tsx`,
+  `src/pages/Members.tsx`, `src/pages/Chat.tsx`, `src/pages/Context.tsx`
+- `src/lib/auth.tsx` — auth context (exists)
+- `functions/org-create.ts` (exists) · `functions/org-invite.ts` · `functions/chat.ts` (agent endpoint)
+  · `functions/ingest-source.ts` (RocketRide) · `functions/slack-event.ts` · `functions/recap-email.ts`
+- `functions/_shared/agent.ts` — chat agent loop (gateway, Claude, tool-calling)
+- `functions/_shared/memory.ts` — Xtrace two-tier (exists) · `functions/_shared/slack.ts`
+- The SPA shell **nav** + router in `src/App.tsx` (Chat · Meetings · Context · Members · Settings) —
+  Track A adds its routes; B owns the nav chrome + `App.tsx` route table.
 
 **Key deliverables:**
 - Multi-user flow: admin creates org, invites Gmail, member joins (`invited`→`active`), role gating
@@ -98,12 +101,16 @@ Photon.
 
 ## Why this split has almost no conflicts
 
-- **Disjoint directories.** A lives in `meetings/`, `bot/`, `recap/`, `recall.ts`, `escalate.ts`,
-  `services/trigger/`. B lives in `(auth)/`, `org/`, `chat/`, `agent.ts`, `memory.ts`, `email.ts`,
-  `integrations/`. They never edit the same file.
-- **Shared files are frozen in Step 0.** `schema.ts`, `bb.ts`, `llm.ts`, `.env.example` are agreed
-  up front. If one *must* change (e.g. a new column), do it as a tiny standalone PR to `main` and
-  ping the other to rebase — never bundle a schema change inside a feature PR.
+- **Disjoint files.** A owns its `src/pages/{Meetings,MeetingLive,BotCam,Recap}.tsx` + the
+  `recall-webhook`/`speak-trigger`/`trigger` functions + `_shared/{recall,escalate}.ts`. B owns the
+  auth/org/chat/context pages + `org-*`/`chat`/`ingest-source`/`slack-event`/`recap-email` functions
+  + `_shared/{agent,memory,slack}.ts`. They never edit the same feature file.
+- **`src/App.tsx` is the one shared-edit file** (the route table). Keep edits to it tiny and
+  append-only (each track adds its own `<Route>` lines); if both touch it the conflict is a trivial
+  2-line merge. Consider a `FEATURES` array so routes are data, not JSX both sides edit.
+- **Foundation files are frozen.** `shared/types.ts`, `functions/_shared/{bb,llm}.ts`,
+  `src/lib/api.ts`, `.env.example` are agreed. If one *must* change (e.g. a new column), do it as a
+  tiny standalone PR to `main` and ping the other to rebase — never bundle it inside a feature PR.
 - **The two cross-track calls are stubs** (`sendRecapEmail`, `runChatAgent`) with signatures fixed
   in Step 0, so each side codes against the interface, not the implementation.
 - **The DB is the integration layer.** Both tracks read/write Butterbase tables (mostly different

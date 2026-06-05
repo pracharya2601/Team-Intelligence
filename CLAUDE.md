@@ -16,7 +16,9 @@ records + transcribes, renders a **live status page as its camera feed**, **rais
 speaks** (ElevenLabs TTS) only after a human opens a gate, has a **private per-user chat**, lives
 in **Slack**, and **remembers** the team long-term. Admins get an emailed recap after each meeting.
 
-The app lives in [`bora/`](bora/) (Next.js 15 + TypeScript). Backend is **Butterbase**.
+The app lives in [`bora/`](bora/): a **Vite React SPA** (browser) + **Butterbase serverless
+functions** (all server logic). No Next.js, no SSR. Backend is **Butterbase**. See
+[`PHASE_0.md`](PHASE_0.md) for the deploy model and what Phase 0 already shipped.
 
 ## The 7-vendor hard rule (do not break)
 
@@ -43,8 +45,9 @@ OpenAI-compatible). **No Anthropic/Gemini keys.** Only Nebius is hosted/keyed se
 
 - **In a meeting, only fast models speak.** Nebius (cheap always-on trigger) → `SpeakDecision`;
   **Gemini Flash** composes/answers. **Never call Claude on the live meeting path** — latency.
-- **Claude 4.8-class** (`anthropic/claude-sonnet-4.x`) is for **off-path** surfaces only:
-  chat UI, post-meeting AI notes, Slack replies.
+- **Claude 4.8** (`anthropic/claude-opus-4.8`, the app's `BORA_MODEL_CHAT`) is for **off-path**
+  surfaces only: chat UI, post-meeting AI notes, Slack replies. (`claude-opus-4.8-fast`,
+  `claude-sonnet-4.6`, `claude-haiku-4.5` are also allowed on the gateway.)
 - Pin exact model ids at build time from `GET /v1/public/models`.
 
 ## Security spine (Butterbase RLS — never bypass in user-facing paths)
@@ -61,14 +64,20 @@ OpenAI-compatible). **No Anthropic/Gemini keys.** Only Nebius is hosted/keyed se
 
 - **TypeScript everywhere.** The `SpeakDecision` contract is authoritative as **Pydantic** on the
   Nebius side; mirror it as a **zod** schema on the Node side.
-- `src/lib/schema.ts` is the **typed source of truth** for table/column names. The live schema lives
-  in Butterbase (`manage_schema` → `manage_migrations`). Keep them in sync; edit schema.ts whenever
+- **`bora/shared/types.ts`** is the **typed source of truth** for table/column names. The live schema
+  lives in Butterbase (`manage_schema` → `manage_migrations`). Keep them in sync; edit it whenever
   you migrate.
+- **Server logic = Butterbase functions** in `bora/functions/`, called from the browser via
+  `POST /v1/{app_id}/fn/{name}` (`callFn()` in `src/lib/api.ts`). There are NO Next.js API routes or
+  server actions. Functions share `functions/_shared/{bb,llm,memory}.ts` and run as the service key;
+  the browser (`src/lib/api.ts`) runs as the **end-user JWT** and never sees the service key.
 - Webhooks (Recall, Slack) **must** dedupe with `ctx.idempotency.claim(event.id, { scope })` —
   providers retry on any non-2xx.
 - Realtime tables: `transcript_segments`, `bot_state` — broadcast over Butterbase WS, filtered by
   `meeting_id`, RLS-aware. The bot camera page and live console subscribe to these.
-- Keep `src/lib/bb.ts` dependency-free (native `fetch`).
+- Keep the Butterbase clients dependency-free (native `fetch`): `src/lib/api.ts` (browser, JWT) and
+  `functions/_shared/bb.ts` (function runtime, service key). Browser env vars are `VITE_*`
+  (via `import.meta.env`), not `NEXT_PUBLIC_*`.
 - In dev, the bot's in-meeting page needs a **public tunnel** (ngrok) — Recall's Output Media
   process blocks `localhost`. Set `APP_BASE_URL` accordingly.
 
@@ -83,12 +92,19 @@ OpenAI-compatible). **No Anthropic/Gemini keys.** Only Nebius is hosted/keyed se
 ## Working in this repo (2-person build)
 
 We split the build across two tracks that own disjoint files. **See [`WORK-SPLIT.md`](WORK-SPLIT.md)
-for who owns what and the merge plan.** Before starting, confirm Phase 0 shared foundation
-(`schema.ts`, `bb.ts`, `llm.ts`, the Next.js scaffold, `.env.example`) is on `main` so both
-branches build on the same contracts.
+for who owns what and the merge plan.** The Phase 0 shared foundation (Vite SPA scaffold,
+`shared/types.ts`, `functions/_shared/*`, `src/lib/api.ts`, `.env.example`, and the live Butterbase
+backend) is already on `main` — both tracks build on those contracts.
 
 ## Status (keep current)
 
-Phase 0 in progress — Butterbase app `app_91v2kzy0pe03` provisioned, 10-table schema applied, core
-libs scaffolded (`bb.ts`, `llm.ts`, `memory.ts`, `schema.ts`). **Not yet done:** RLS policies,
-realtime config, auth/OAuth, RAG collection + integrations, the Next.js app shell, all UI.
+**Phase 0 ≈ 90% done** (see [`PHASE_0.md`](PHASE_0.md)). Live on Butterbase app `app_91v2kzy0pe03`
+(region `us-east-1`): 10-table schema, **RLS** (chat isolation + org scoping + admin-only writes +
+service bypass), **realtime** (`transcript_segments`, `bot_state`), **AI gateway** (`allowedModels`
+set; default `gemini-2.5-flash`, chat `claude-opus-4.8`), **Gmail + GitHub integrations**, service
+key minted. Vite SPA + functions scaffold committed.
+
+**Carry-over (remaining Phase 0):** Google OAuth (needs a Google Cloud client_id/secret) → configure
++ verify login · run/verify the SPA locally · deploy the `org-create` function + SPA to Butterbase.
+Note: `scripts/check.ts` and `.env.example` still reference the old Next.js paths/vars — fix when
+touched.
