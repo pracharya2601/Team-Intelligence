@@ -177,9 +177,17 @@ The **living checklist** for Bora, derived from [`PLAN.md`](PLAN.md) (the full d
       **graceful no-op** when no Gmail connected; explicit `to` honored. ⛔ **live send pends a Gmail
       connection** (Settings → Connect Gmail). Caller check: service/cron allowed; a user must be an
       org member.
-- [x] **Connect Gmail** UI — `Settings.tsx` Gmail panel + `api.ts` `integrationConnect/Connections/
-      Disconnect`. Admin clicks Connect → `/integrations/connect` → Composio OAuth → back to Settings.
-      **Verified**: connect returns a real OAuth `authUrl`. *(Completing OAuth is a one-time manual step.)*
+- [x] **Connect integrations** UI — `Settings.tsx` shows a panel per toolkit (Gmail · GitHub · Slack)
+      + `api.ts` `integrationConnect/Connections/Disconnect`. Connect now routes through the
+      `integration-connect` function so the **connect policy is enforced server-side** (not just hidden
+      in the UI): **Gmail = any active member, GitHub/Slack = admin only** (see
+      [[bora-integration-connect-policy]]). The function binds the Composio OAuth to the caller
+      (`userId`). **Verified live**: member→gmail authUrl, member→github/slack **403** ("only an admin"),
+      admin→gmail+github authUrl, non-member→403, unsupported toolkit→400. Slack passes the admin gate
+      then returns 501 ("connects via Photon Spectrum — not configured yet") since Slack is a **Photon**
+      integration per the 7-vendor rule, not Composio. Test members cleaned up.
+      *(Residual: the platform `/integrations/connect` is still reachable with a raw JWT, so the gate is
+      app-level. GitHub toolkit is enabled; Slack needs Photon wiring; completing OAuth is one-time.)*
 - [x] Cron `daily-recap` function: batch digest of meetings completed in the trailing window (default
       24h), one email per org to active admins, sent via Gmail `GMAIL_SEND_EMAIL`. Deployed as a
       **cron trigger** (`0 16 * * *` UTC) via `deploy-fn.mjs` (now supports `cron "<schedule>"`).

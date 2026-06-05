@@ -140,14 +140,18 @@ export async function integrationConnections(): Promise<IntegrationConnection[]>
   return body.connections ?? [];
 }
 
-/** Start an OAuth connect for a toolkit (e.g. "gmail"); returns the URL to redirect the user to. */
-export async function integrationConnect(toolkit: string, redirectUrl: string): Promise<string> {
-  const res = await fetch(`${appUrl}/integrations/connect`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ toolkit, redirectUrl }),
+/**
+ * Start an OAuth connect for a toolkit; returns the URL to redirect the user to. Routes through the
+ * `integration-connect` function so Bora's connect policy is enforced server-side: gmail = any
+ * active member, github/slack = admin only (see integration-connect.ts). Needs the org id for the
+ * role check.
+ */
+export async function integrationConnect(orgId: string, toolkit: string, redirectUrl: string): Promise<string> {
+  const body = await callFn<{ authUrl: string; connectionRequestId: string }>("integration-connect", {
+    org_id: orgId,
+    toolkit,
+    redirectUrl,
   });
-  const body = await asJson<{ authUrl: string; connectionRequestId: string }>(res);
   return body.authUrl;
 }
 

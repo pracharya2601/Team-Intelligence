@@ -10,6 +10,7 @@ import {
 } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { OrgLayout } from "../components/OrgLayout";
+import { SkeletonCard } from "../components/Skeleton";
 import type { Bot, OrgMember, Organization } from "../../shared/types";
 
 /**
@@ -23,18 +24,32 @@ export function SettingsPage() {
   const [org, setOrg] = useState<Organization | null>(null);
   const [bot, setBot] = useState<Bot | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [orgName, setOrgName] = useState("");
   const [botName, setBotName] = useState("");
   const [persona, setPersona] = useState("");
-  const [busy, setBusy] = useState<"" | "org" | "bot" | "gmail">("");
+  const [busy, setBusy] = useState<string>("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [gmail, setGmail] = useState<IntegrationConnection | null>(null);
+  const [conns, setConns] = useState<IntegrationConnection[]>([]);
+
+  // Connect policy (mirrors functions/integration-connect.ts): gmail = any active member,
+  // github/slack = admin only. The server enforces it; this drives what the UI offers.
+  const INTEGRATIONS: { toolkit: string; label: string; desc: string; adminOnly: boolean }[] = [
+    { toolkit: "gmail", label: "Email (Gmail)", adminOnly: false,
+      desc: "Connect a Gmail account so Bora can email a recap after each meeting. Any member can connect; recaps send from a connected account." },
+    { toolkit: "github", label: "GitHub", adminOnly: true,
+      desc: "Connect GitHub so admins can pull repository docs into the team's knowledge base." },
+    { toolkit: "slack", label: "Slack", adminOnly: true,
+      desc: "Connect Slack to bring Bora into your workspace for in-thread answers." },
+  ];
+  const connFor = (toolkit: string) =>
+    conns.find((c) => c.toolkit_slug === toolkit && /active/i.test(c.status)) ?? null;
 
   async function load() {
     setError("");
     try {
-      const [orgs, bots, mem, conns] = await Promise.all([
+      const [orgs, bots, mem, c] = await Promise.all([
         select<Organization>("organizations", { id: `eq.${id}` }),
         select<Bot>("bots", { org_id: `eq.${id}` }),
         select<OrgMember>("org_members", { org_id: `eq.${id}`, user_id: `eq.${user?.id ?? ""}` }),
@@ -48,31 +63,34 @@ export function SettingsPage() {
       setBotName(b?.name ?? "Bora");
       setPersona(b?.persona ?? "");
       setIsAdmin(mem.some((m) => m.role === "admin" && m.status === "active"));
-      setGmail(conns.find((c) => c.toolkit_slug === "gmail" && /active/i.test(c.status)) ?? null);
+      setConns(c);
     } catch (e: any) {
       setError(e?.message ?? "Failed to load settings");
+    } finally {
+      setLoading(false);
     }
   }
 
-  async function connectGmail() {
-    setBusy("gmail");
+  async function connect(toolkit: string, label: string) {
+    setBusy(toolkit);
     setError("");
     try {
-      const authUrl = await integrationConnect("gmail", `${window.location.origin}/org/${id}/settings`);
+      const authUrl = await integrationConnect(id, toolkit, `${window.location.origin}/org/${id}/settings`);
       window.location.href = authUrl; // returns here after OAuth; load() then shows "connected"
     } catch (err: any) {
-      setError(err?.message ?? "Couldn't start Gmail connection");
+      setError(err?.message ?? `Couldn't start the ${label} connection`);
       setBusy("");
     }
   }
 
-  async function disconnectGmail() {
-    if (!gmail) return;
-    setBusy("gmail");
+  async function disconnect(toolkit: string) {
+    const conn = connFor(toolkit);
+    if (!conn) return;
+    setBusy(toolkit);
     setError("");
     try {
-      await integrationDisconnect(gmail.id);
-      setNotice("Gmail disconnected.");
+      await integrationDisconnect(conn.id);
+      setNotice("Disconnected.");
       await load();
     } catch (err: any) {
       setError(err?.message ?? "Couldn't disconnect");
@@ -94,7 +112,7 @@ export function SettingsPage() {
     setNotice("");
     try {
       await callFn("org-settings", { action: "update_org", org_id: id, name });
-      setNotice("Organization name saved.");
+      setNotice("Project name saved.");
       await load();
     } catch (err: any) {
       setError(err?.message ?? "Failed to save");
@@ -125,12 +143,20 @@ export function SettingsPage() {
       orgId={id}
       orgName={org?.name}
       title="Settings"
-      subtitle="Workspace & bot configuration"
+      subtitle="Project & bot configuration"
     >
       {!isAdmin && <div className="notice info">Only admins can change settings.</div>}
 
+      {loading ? (
+        <>
+          <SkeletonCard lines={2} />
+          <SkeletonCard lines={3} />
+          <SkeletonCard lines={2} />
+        </>
+      ) : (
+        <>
       <form className="card col" onSubmit={saveOrg}>
-        <h3 style={{ margin: 0 }}>Organization</h3>
+        <h3 style={{ margin: 0 }}>Project</h3>
         <label className="label">Name</label>
         <div className="row">
           <input value={orgName} onChange={(e) => setOrgName(e.target.value)} disabled={!isAdmin} style={{ flex: 1 }} />
@@ -159,33 +185,43 @@ export function SettingsPage() {
         )}
       </form>
 
-      <div className="card col">
-        <h3 style={{ margin: 0 }}>Email (Gmail)</h3>
-        <div className="muted" style={{ fontSize: 13 }}>
-          Connect a Gmail account so Bora can email admins a recap after each meeting.
-          The recap is sent from the connected account.
-        </div>
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <span>
-            {gmail ? (
-              <><span className="badge badge-active">connected</span> Gmail is connected.</>
-            ) : (
-              <span className="muted">Not connected.</span>
-            )}
-          </span>
-          {isAdmin && (
-            gmail ? (
-              <button className="secondary" disabled={busy !== ""} onClick={disconnectGmail}>
-                {busy === "gmail" ? "…" : "Disconnect"}
-              </button>
-            ) : (
-              <button disabled={busy !== ""} onClick={connectGmail}>
-                {busy === "gmail" ? "…" : "Connect Gmail"}
-              </button>
-            )
-          )}
-        </div>
-      </div>
+      {INTEGRATIONS.map((it) => {
+        const conn = connFor(it.toolkit);
+        const canConnect = it.adminOnly ? isAdmin : true;
+        return (
+          <div className="card col" key={it.toolkit}>
+            <h3 style={{ margin: 0 }}>
+              {it.label}
+              {it.adminOnly && <span className="badge" style={{ marginLeft: 8 }}>admin only</span>}
+            </h3>
+            <div className="muted" style={{ fontSize: 13 }}>{it.desc}</div>
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <span>
+                {conn ? (
+                  <><span className="badge badge-active">connected</span> {it.label} is connected.</>
+                ) : (
+                  <span className="muted">Not connected.</span>
+                )}
+              </span>
+              {canConnect ? (
+                conn ? (
+                  <button className="secondary" disabled={busy !== ""} onClick={() => disconnect(it.toolkit)}>
+                    {busy === it.toolkit ? "…" : "Disconnect"}
+                  </button>
+                ) : (
+                  <button disabled={busy !== ""} onClick={() => connect(it.toolkit, it.label)}>
+                    {busy === it.toolkit ? "…" : `Connect ${it.label}`}
+                  </button>
+                )
+              ) : (
+                <span className="muted" style={{ fontSize: 12 }}>Only an admin can connect this.</span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+        </>
+      )}
 
       {notice && <div className="notice success">{notice}</div>}
       {error && <div className="notice error">{error}</div>}
