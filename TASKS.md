@@ -25,9 +25,9 @@ The **living checklist** for Bora, derived from [`PLAN.md`](PLAN.md) (the full d
 - [x] Gateway proven: both Claude + Gemini reply via `/chat/completions`
 
 **Remaining — Lane 1: Local & Verify  [A+B, service key only]**
-- [ ] Fix `scripts/check.ts` — repoint to `functions/_shared/{bb,llm}`, adapt to `complete(env, opts)`
+- [x] Fix `scripts/check.ts` — now standalone (loads `.env.local`), uses `functions/_shared/{bb,llm}`, soft-warns on RAG
 - [x] Fix `.env.example` — `VITE_*` vars added, `NEXT_PUBLIC_*` dropped, port 5173, placeholders only (real keys → `.env.local`)
-- [ ] `npm install` → `.env.local` with key → `npm run check` green → `npm run dev` boots
+- [x] `npm install` → `.env.local` key set → `npm run check` green (data API + both models) → `npm run dev` boots (SPA serves 200)
 - [ ] Extend `check.ts` to the **§0.9 verifier**: RAG ingest→poll→query round-trip
 - [ ] **Two-user RLS proof**: member B can't read member A's chat; non-admin can't insert `context_source`
 - [ ] Smoke **Xtrace** connectivity once `XTRACE_API_KEY`/`XTRACE_ORG_ID` exist

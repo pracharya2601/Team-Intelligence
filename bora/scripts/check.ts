@@ -1,7 +1,7 @@
 /**
  * Quick setup check — confirms the Butterbase backend is reachable and the gateway works.
  *
- * Run: npm run check   (requires bora/.env with BUTTERBASE_API_KEY)
+ * Run: npm run check   (reads bora/.env.local or .env for BUTTERBASE_API_KEY)
  *
  * For the full Phase 0 verification (schema, RLS prerequisite, RAG embedding, OAuth, …) run the
  * test suite instead: `npm test` → tests/phase0.test.ts. This file is the fast smoke test.
@@ -15,14 +15,17 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const here = dirname(fileURLToPath(import.meta.url));
-try {
-  const raw = readFileSync(join(here, "..", ".env"), "utf8");
-  for (const line of raw.split("\n")) {
-    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
+// Load .env.local first (preferred, matches deploy-fn.mjs), then fall back to .env.
+for (const file of [".env.local", ".env"]) {
+  try {
+    const raw = readFileSync(join(here, "..", file), "utf8");
+    for (const line of raw.split("\n")) {
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+      if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
+    }
+  } catch {
+    /* file absent — try the next one */
   }
-} catch {
-  /* no .env */
 }
 
 const APP_ID = process.env.BUTTERBASE_APP_ID ?? "app_91v2kzy0pe03";
@@ -33,7 +36,7 @@ const appUrl = `${API_BASE}/v1/${APP_ID}`;
 async function main() {
   console.log("Bora setup check\n");
   if (!KEY.startsWith("bb_sk_")) {
-    console.error("  ✗ BUTTERBASE_API_KEY (bb_sk_...) not set — copy .env.example to .env and fill it in.");
+    console.error("  ✗ BUTTERBASE_API_KEY (bb_sk_...) not set — copy .env.example to .env.local and fill it in.");
     process.exit(1);
   }
 
