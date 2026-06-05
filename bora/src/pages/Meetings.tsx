@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { callFn, select } from "../lib/api";
-import { useAuth } from "../lib/auth";
+import { OrgLayout } from "../components/OrgLayout";
 import type { Meeting, Organization } from "../../shared/types";
 
 /**
- * Meetings (org-scoped, route /org/:id/meetings — mirrors /org/:id/chat).
+ * Meetings (org-scoped, route /org/:id/meetings). Uses the shared OrgLayout sidebar.
  * An admin pastes a Meet/Zoom/Teams URL and Bora joins (via the meeting-create function → Recall).
  * Lists the org's meetings (RLS-scoped to active members). Each row links to the recap.
  *
@@ -13,7 +13,6 @@ import type { Meeting, Organization } from "../../shared/types";
  */
 export function MeetingsPage() {
   const { id: orgId = "" } = useParams();
-  const { user, logout } = useAuth();
   const [org, setOrg] = useState<Organization | null>(null);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [url, setUrl] = useState("");
@@ -55,21 +54,7 @@ export function MeetingsPage() {
   }
 
   return (
-    <div className="container col">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <div className="row">
-          <Link to={`/org/${orgId}`} className="muted">← {org?.name ?? "Organization"}</Link>
-          <span className="brand" style={{ fontSize: 22 }}>Meetings</span>
-        </div>
-        <div className="row">
-          <Link to={`/org/${orgId}/chat`} className="secondary" style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
-            Chat
-          </Link>
-          <span className="muted">{user?.email}</span>
-          <button className="secondary" onClick={logout}>Log out</button>
-        </div>
-      </div>
-
+    <OrgLayout orgId={orgId} orgName={org?.name} title="Meetings">
       <form className="panel col" onSubmit={callBot}>
         <h3 style={{ margin: 0 }}>Call Bora into a meeting</h3>
         <div className="muted">Paste a Google Meet, Zoom, or Teams link. Admins only.</div>
@@ -104,7 +89,7 @@ export function MeetingsPage() {
           </Link>
         ))}
       </div>
-    </div>
+    </OrgLayout>
   );
 }
 
